@@ -7,6 +7,8 @@ import { BookOpen, Calendar, CheckCircle2 } from "lucide-react";
 import { setActiveSchedule } from "@/lib/actions/courses";
 import { Button } from "@/components/ui/button";
 import { DeleteScheduleButton } from "@/components/dashboard/DeleteScheduleButton";
+import { CourseEditorDialog } from "@/components/dashboard/CourseEditorDialog";
+import { DeleteCourseButton } from "@/components/dashboard/DeleteCourseButton";
 
 const DAY_NAMES = ["", "周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 
@@ -84,6 +86,10 @@ export default async function ProfilePage() {
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        <CourseEditorDialog
+                                            scheduleId={schedule.id}
+                                            scheduleName={schedule.semester_tag}
+                                        />
                                         {!schedule.is_active && (
                                             <form
                                                 action={async () => {
@@ -135,6 +141,17 @@ export default async function ProfilePage() {
                                                     第{course.start_week}-{course.end_week}周
                                                     {course.room && ` · ${course.room}`}
                                                 </p>
+                                            </div>
+                                            <div className="ml-auto flex items-center gap-1">
+                                                <CourseEditorDialog
+                                                    scheduleId={schedule.id}
+                                                    scheduleName={schedule.semester_tag}
+                                                    course={course}
+                                                />
+                                                <DeleteCourseButton
+                                                    courseId={course.id}
+                                                    courseName={course.name}
+                                                />
                                             </div>
                                         </div>
                                     ))}

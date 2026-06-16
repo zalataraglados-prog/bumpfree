@@ -17,6 +17,10 @@ const manualCourseSchema = z.object({
     endWeek: z.coerce.number().min(1),
 });
 
+const updateCourseSchema = manualCourseSchema.extend({
+    courseId: z.string().uuid(),
+});
+
 /**
  * Import a schedule via WakeUp share key or message.
  * Creates or replaces the schedule + courses for that semester_tag.
@@ -187,6 +191,52 @@ export async function addManualCourse(formData: FormData) {
     });
 
     if (error) return { error: "添加课程失败" };
+    revalidatePath("/dashboard/profile");
+    return { success: true };
+}
+
+/**
+ * Update a single course by ID.
+ */
+export async function updateCourse(formData: FormData) {
+    const supabase = await createClient();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: "请先登录" };
+
+    const parsed = updateCourseSchema.safeParse({
+        courseId: formData.get("courseId"),
+        scheduleId: formData.get("scheduleId"),
+        name: formData.get("name"),
+        room: formData.get("room"),
+        teacher: formData.get("teacher"),
+        dayOfWeek: formData.get("dayOfWeek"),
+        startTime: formData.get("startTime"),
+        endTime: formData.get("endTime"),
+        startWeek: formData.get("startWeek"),
+        endWeek: formData.get("endWeek"),
+    });
+
+    if (!parsed.success) return { error: "请检查输入格式" };
+
+    const { error } = await supabase
+        .from("courses")
+        .update({
+            schedule_id: parsed.data.scheduleId,
+            name: parsed.data.name,
+            room: parsed.data.room || null,
+            teacher: parsed.data.teacher || null,
+            day_of_week: parsed.data.dayOfWeek,
+            start_time: parsed.data.startTime,
+            end_time: parsed.data.endTime,
+            start_week: parsed.data.startWeek,
+            end_week: parsed.data.endWeek,
+        })
+        .eq("id", parsed.data.courseId)
+        .eq("user_id", user.id);
+
+    if (error) return { error: "更新课程失败" };
     revalidatePath("/dashboard/profile");
     return { success: true };
 }

@@ -4,7 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bumpfree.ztlearn.xyz";
+const SITE_URL =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "https://bumpfree-zalataraglados-1455s-projects.vercel.app";
 
 const loginSchema = z.object({
     email: z.string().email(),

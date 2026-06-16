@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bumpfree.ztlearn.xyz";
+
 const loginSchema = z.object({
     email: z.string().email(),
     password: z.string().min(6),
@@ -39,27 +41,22 @@ export async function registerAction(formData: FormData) {
 
     const supabase = await createClient();
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bumpfree.vercel.app';
-
     const { data, error } = await supabase.auth.signUp({
         email: parsed.data.email,
         password: parsed.data.password,
         options: {
-            emailRedirectTo: `${siteUrl}/auth/callback`,
-        }
+            emailRedirectTo: `${SITE_URL}/auth/callback`,
+        },
     });
     if (error) return { error: error.message };
     if (!data.user) return { error: "注册失败，请重试" };
 
-    // Check if this is the first user (becomes SuperAdmin via DB trigger)
-    // Update display_name
     await supabase.from("profiles").upsert({
         id: data.user.id,
         display_name: parsed.data.displayName,
     });
 
     if (!data.session) {
-        // Email confirmation required
         return { success: true, message: "注册成功！请前往您的邮箱点击验证链接。" };
     }
 
@@ -77,10 +74,9 @@ export async function requestPasswordResetAction(formData: FormData) {
     if (!email) return { error: "请输入有效的邮箱" };
 
     const supabase = await createClient();
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bumpfree.vercel.app';
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${siteUrl}/auth/update-password`,
+        redirectTo: `${SITE_URL}/auth/update-password`,
     });
 
     if (error) return { error: error.message };

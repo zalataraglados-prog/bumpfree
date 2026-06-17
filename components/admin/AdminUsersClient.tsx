@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,12 +10,12 @@ import { toast } from "sonner";
 import { Shield, User, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import type { Profile } from "@/lib/types";
+import type { AdminUser } from "@/lib/types";
 import { motion } from "framer-motion";
 import { springSnappy } from "@/lib/animations";
 
 interface AdminUsersClientProps {
-    users: Profile[];
+    users: AdminUser[];
     currentUserId: string;
 }
 
@@ -30,7 +30,7 @@ export function AdminUsersClient({ users, currentUserId }: AdminUsersClientProps
     );
 }
 
-function UserRow({ user, isSelf }: { user: Profile; isSelf: boolean }) {
+function UserRow({ user, isSelf }: { user: AdminUser; isSelf: boolean }) {
     const [quota, setQuota] = useState(String(user.room_quota));
     const [scheduleQuota, setScheduleQuota] = useState(String(user.schedule_quota ?? 3));
     const [isPending, startTransition] = useTransition();
@@ -79,7 +79,7 @@ function UserRow({ user, isSelf }: { user: Profile; isSelf: boolean }) {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-medium text-sm">{user.display_name ?? "—"}</span>
+                                <span className="font-medium text-sm">{user.display_name}</span>
                                 <Badge
                                     variant={user.role === "superadmin" ? "default" : "outline"}
                                     className="text-xs gap-1"
@@ -92,6 +92,9 @@ function UserRow({ user, isSelf }: { user: Profile; isSelf: boolean }) {
                             <p className="text-xs text-muted-foreground mt-0.5">
                                 注册于 {format(new Date(user.created_at), "yyyy年MM月dd日", { locale: zhCN })}
                             </p>
+                            {user.email && (
+                                <p className="text-xs text-muted-foreground mt-0.5 break-all">{user.email}</p>
+                            )}
                         </div>
 
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-4 sm:mt-0">

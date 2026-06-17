@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Users, DoorOpen } from "lucide-react";
 import { PageWrapper } from "@/components/motion/PageWrapper";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminUsersPage() {
     const supabase = await createClient();
     const {
@@ -13,12 +15,7 @@ export default async function AdminUsersPage() {
     } = await supabase.auth.getUser();
     if (!user) redirect("/auth/login");
 
-    const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, display_name, role, room_quota, schedule_quota, created_at")
-        .order("created_at", { ascending: false });
-
-    const stats = await getGlobalStats();
+    const [users, stats] = await Promise.all([getAllUsers(), getGlobalStats()]);
 
     return (
         <PageWrapper className="max-w-4xl mx-auto space-y-6">
@@ -53,7 +50,7 @@ export default async function AdminUsersPage() {
                 </Card>
             </div>
 
-            <AdminUsersClient users={profiles ?? []} currentUserId={user.id} />
+            <AdminUsersClient users={users} currentUserId={user.id} />
         </PageWrapper>
     );
 }

@@ -9,6 +9,16 @@ export interface Profile {
     created_at: string;
 }
 
+export interface AdminUser {
+    id: string;
+    display_name: string;
+    email: string | null;
+    role: "user" | "superadmin";
+    room_quota: number;
+    schedule_quota: number;
+    created_at: string;
+}
+
 export interface Schedule {
     id: string;
     user_id: string;

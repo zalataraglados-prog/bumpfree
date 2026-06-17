@@ -1,8 +1,10 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import type { AdminUser, Profile } from "@/lib/types";
 
 const updateQuotaSchema = z.object({
     userId: z.string().uuid(),
@@ -31,15 +33,85 @@ async function assertSuperAdmin() {
     return supabase;
 }
 
+function normalizeDisplayName(
+    profileDisplayName: string | null | undefined,
+    email: string | null | undefined,
+    metadataDisplayName: unknown
+) {
+    if (profileDisplayName?.trim()) return profileDisplayName;
+    if (typeof metadataDisplayName === "string" && metadataDisplayName.trim()) return metadataDisplayName;
+    if (email) return email.split("@")[0];
+    return "未命名用户";
+}
+
+function profileToAdminUser(profile: Profile): AdminUser {
+    return {
+        id: profile.id,
+        display_name: normalizeDisplayName(profile.display_name, null, null),
+        email: null,
+        role: profile.role,
+        room_quota: profile.room_quota,
+        schedule_quota: profile.schedule_quota ?? 3,
+        created_at: profile.created_at,
+    };
+}
+
 export async function getAllUsers() {
     const supabase = await assertSuperAdmin();
+    const adminClient = createAdminClient();
 
     const { data } = await supabase
         .from("profiles")
         .select("*")
         .order("created_at", { ascending: false });
 
-    return data ?? [];
+    const profiles = (data ?? []) as Profile[];
+
+    if (!adminClient) {
+        return profiles.map(profileToAdminUser);
+    }
+
+    const allUsers = [];
+    let page = 1;
+
+    while (true) {
+        const { data: authData, error } = await adminClient.auth.admin.listUsers({
+            page,
+            perPage: 1000,
+        });
+
+        if (error) {
+            throw new Error(`Failed to list users: ${error.message}`);
+        }
+
+        const users = authData.users ?? [];
+        allUsers.push(...users);
+
+        if (users.length < 1000) break;
+        page += 1;
+    }
+
+    const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
+
+    return allUsers
+        .map((authUser) => {
+            const profile = profileMap.get(authUser.id);
+
+            return {
+                id: authUser.id,
+                display_name: normalizeDisplayName(
+                    profile?.display_name,
+                    authUser.email,
+                    authUser.user_metadata?.display_name
+                ),
+                email: authUser.email ?? null,
+                role: profile?.role ?? "user",
+                room_quota: profile?.room_quota ?? 3,
+                schedule_quota: profile?.schedule_quota ?? 3,
+                created_at: profile?.created_at ?? authUser.created_at,
+            } satisfies AdminUser;
+        })
+        .sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
 export async function updateUserQuota(formData: FormData) {
@@ -98,11 +170,21 @@ export async function toggleUserRole(userId: string, currentRole: string) {
 
 export async function getGlobalStats() {
     const supabase = await assertSuperAdmin();
+    const adminClient = createAdminClient();
 
-    const [{ count: userCount }, { count: roomCount }] = await Promise.all([
-        supabase.from("profiles").select("*", { count: "exact", head: true }),
-        supabase.from("rooms").select("*", { count: "exact", head: true }),
-    ]);
+    const roomCountPromise = supabase.from("rooms").select("*", { count: "exact", head: true });
 
-    return { userCount: userCount ?? 0, roomCount: roomCount ?? 0 };
+    if (!adminClient) {
+        const [{ count: userCount }, { count: roomCount }] = await Promise.all([
+            supabase.from("profiles").select("*", { count: "exact", head: true }),
+            roomCountPromise,
+        ]);
+
+        return { userCount: userCount ?? 0, roomCount: roomCount ?? 0 };
+    }
+
+    const users = await getAllUsers();
+    const { count: roomCount } = await roomCountPromise;
+
+    return { userCount: users.length, roomCount: roomCount ?? 0 };
 }

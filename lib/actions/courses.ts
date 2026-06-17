@@ -44,7 +44,14 @@ export async function importWakeUpSchedule(token: string) {
         );
         if (!res.ok) throw new Error("WakeUp API 无响应");
         const json = await res.json();
-        if (json.status !== 1) throw new Error("口令无效或已过期");
+        if (json.status !== 1) {
+            const message = typeof json.message === "string" ? json.message : null;
+            if (json.status === 5000004 || message?.includes("\u7248\u672c\u8fc7\u4f4e")) {
+                throw new Error("WakeUp \u63a5\u53e3\u8981\u6c42\u65b0\u7248\u5ba2\u6237\u7aef\u53c2\u6570\uff0c\u5f53\u524d\u7ad9\u70b9\u6682\u65f6\u65e0\u6cd5\u76f4\u63a5\u8bfb\u53d6\u8be5\u5206\u4eab\u7801\uff1b\u8bf7\u5148\u4f7f\u7528\u624b\u5de5\u8bfe\u8868\u5bfc\u5165");
+            }
+            throw new Error(message || "\u53e3\u4ee4\u65e0\u6548\u6216\u5df2\u8fc7\u671f");
+        }
+        if (typeof json.data !== "string") throw new Error("WakeUp \u8fd4\u56de\u6570\u636e\u683c\u5f0f\u5f02\u5e38");
         rawText = json.data;
     } catch (e) {
         return { error: e instanceof Error ? e.message : "获取课表失败" };

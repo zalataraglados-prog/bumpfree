@@ -38,10 +38,18 @@ function normalizeDisplayName(
     email: string | null | undefined,
     metadataDisplayName: unknown
 ) {
-    if (profileDisplayName?.trim()) return profileDisplayName;
-    if (typeof metadataDisplayName === "string" && metadataDisplayName.trim()) return metadataDisplayName;
-    if (email) return email.split("@")[0];
-    return "未命名用户";
+    const profileName = profileDisplayName?.trim();
+    const emailLocalPart = email?.split("@")[0];
+    const isNumericEmailFallback =
+        Boolean(profileName && emailLocalPart) &&
+        profileName === emailLocalPart &&
+        /^\d+$/.test(profileName);
+
+    if (profileName && !isNumericEmailFallback) return profileName;
+    if (typeof metadataDisplayName === "string" && metadataDisplayName.trim()) return metadataDisplayName.trim();
+    if (email) return email;
+    if (profileName) return profileName;
+    return "\u672a\u547d\u540d\u7528\u6237";
 }
 
 function profileToAdminUser(profile: Profile): AdminUser {

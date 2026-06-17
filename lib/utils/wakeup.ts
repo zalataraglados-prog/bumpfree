@@ -166,18 +166,13 @@ export function parseWakeUpResponse(rawText: string): ParsedSchedule {
  * Accepts either the full message or just the key itself.
  */
 export function extractWakeUpKey(input: string): string | null {
+    // Try to find the key in the share message (case-insensitive)
+    const match = input.match(/分享口令为「([a-f0-9]{32})」/i);
+    if (match) return match[1].toLowerCase();
+
+    // If it's a direct 32-char hex key
     const trimmed = input.trim();
-
-    // WakeUp uses a 32-character hex key. The surrounding share text varies by
-    // platform/version, so do not depend on the Chinese label or bracket style.
-    const direct = trimmed.match(/^[a-f0-9]{32}$/i);
-    if (direct) return direct[0].toLowerCase();
-
-    const urlKey = trimmed.match(/[?&]key=([a-f0-9]{32})(?:\b|&|$)/i);
-    if (urlKey) return urlKey[1].toLowerCase();
-
-    const embeddedKey = trimmed.match(/\b[a-f0-9]{32}\b/i);
-    if (embeddedKey) return embeddedKey[0].toLowerCase();
+    if (/^[a-f0-9]{32}$/.test(trimmed)) return trimmed;
 
     return null;
 }

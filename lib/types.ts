@@ -86,6 +86,7 @@ export interface CalendarEvent {
         userId: string;
         displayName: string;
         color: string; // member's room color
+        courseColor: string | null;
         courseName: string;
         room: string | null;
         teacher: string | null;

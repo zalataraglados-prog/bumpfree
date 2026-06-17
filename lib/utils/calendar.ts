@@ -48,6 +48,7 @@ export function expandCourses(
                     userId,
                     displayName,
                     color: memberColor,
+                    courseColor: course.color,
                     courseName: course.name,
                     room: course.room,
                     teacher: course.teacher,

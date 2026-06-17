@@ -16,7 +16,7 @@ import { expandCourses } from "@/lib/utils/calendar";
 import type { CalendarEvent, Course, Schedule } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { hexToRgba } from "@/lib/utils/colors";
+import { getReadableTextColor, hexToRgba } from "@/lib/utils/colors";
 import { Calendar as CalendarIcon, User, LayoutGrid, ChevronLeft, ChevronRight } from "lucide-react";
 
 const locales = { "zh-CN": zhCN };
@@ -77,12 +77,14 @@ export function RoomCalendar({ memberData, roomName, isReadOnly }: RoomCalendarP
     const rbcView: View = viewMode === "person" ? "week" : viewMode === "month" ? "month" : "week";
 
     function eventStyleGetter(event: CalendarEvent) {
-        const color = event.resource.color;
+        const memberColor = event.resource.color;
+        const courseColor = event.resource.courseColor ?? memberColor;
         return {
             style: {
-                backgroundColor: hexToRgba(color, 0.85),
-                borderLeft: `3px solid ${color}`,
-                color: "#fff",
+                backgroundColor: courseColor,
+                borderLeft: `5px solid ${memberColor}`,
+                boxShadow: `inset 0 0 0 1px ${hexToRgba(memberColor, 0.45)}`,
+                color: getReadableTextColor(courseColor),
                 borderRadius: "4px",
                 fontSize: "0.72rem",
                 padding: "1px 4px",
@@ -106,11 +108,14 @@ export function RoomCalendar({ memberData, roomName, isReadOnly }: RoomCalendarP
         return (
             <div
                 className="flex items-center gap-1 px-1"
-                style={{ color: event.resource.color }}
+                style={{ color: event.resource.courseColor ?? event.resource.color }}
             >
                 <span
                     className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: event.resource.color }}
+                    style={{
+                        backgroundColor: event.resource.courseColor ?? event.resource.color,
+                        boxShadow: `0 0 0 1px ${event.resource.color}`,
+                    }}
                 />
                 <span className="truncate text-xs font-medium">{event.resource.displayName}</span>
             </div>

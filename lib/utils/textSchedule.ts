@@ -64,7 +64,7 @@ const STRICT_HEADER = "BumpFree Schedule Import v1";
 
 export function parseTextSchedule(input: string): ParsedTextSchedule {
     const text = normalizeText(input);
-    if (!text.trim()) throw new Error("Please paste schedule text first");
+    if (!text.trim()) throw new Error("????????");
     return text.includes(STRICT_HEADER) ? parseStrictSchedule(text) : parseLooseSchedule(text);
 }
 
@@ -112,7 +112,7 @@ function parseStrictSchedule(text: string): ParsedTextSchedule {
     const warnings: string[] = [];
     const parts = text.split(/^---\s*$/m).map((part) => part.trim()).filter(Boolean);
     const header = parts.shift();
-    if (!header?.includes(STRICT_HEADER)) throw new Error("Missing BumpFree Schedule Import v1 header");
+    if (!header?.includes(STRICT_HEADER)) throw new Error("?? BumpFree Schedule Import v1 ??");
 
     const globalFields = parseFields(header.replace(STRICT_HEADER, ""));
     const semesterTag = requireField(globalFields, "semester", "Semester");
@@ -123,12 +123,12 @@ function parseStrictSchedule(text: string): ParsedTextSchedule {
     const school = globalFields.get("school") || "Manual Import";
     const importMode = parseImportMode(globalFields.get("importmode"));
     const courses = parts.flatMap((block, index) => parseStrictCourseBlock(block, index + 1));
-    if (courses.length === 0) throw new Error("No course blocks found");
+    if (courses.length === 0) throw new Error("????????");
 
     const inferredMaxWeek = Math.max(...courses.map((course) => course.endWeek));
     const maxWeeks = parsePositiveInt(globalFields.get("maxweeks") || String(inferredMaxWeek), "MaxWeeks");
     for (const course of courses) {
-        if (course.endWeek > maxWeeks) throw new Error(`Course ${course.name} exceeds MaxWeeks`);
+        if (course.endWeek > maxWeeks) throw new Error(`???${course.name}?????? MaxWeeks`);
     }
 
     return { format: "strict", semesterTag, startDate, timezone, maxWeeks, school, importMode, courses, warnings };
@@ -136,13 +136,13 @@ function parseStrictSchedule(text: string): ParsedTextSchedule {
 
 function parseStrictCourseBlock(block: string, blockIndex: number): TextScheduleCourse[] {
     const fields = parseFields(block);
-    const dayOfWeek = parseDay(requireField(fields, "day", `course block ${blockIndex} Day`));
-    const [startTime, endTime] = parseTimeRange(requireField(fields, "time", `course block ${blockIndex} Time`));
-    const name = requireField(fields, "name", `course block ${blockIndex} Name`);
+    const dayOfWeek = parseDay(requireField(fields, "day", `? ${blockIndex} ???? Day`));
+    const [startTime, endTime] = parseTimeRange(requireField(fields, "time", `? ${blockIndex} ???? Time`));
+    const name = requireField(fields, "name", `? ${blockIndex} ???? Name`);
     const teacher = fields.get("teacher") || "";
     const room = fields.get("room") || "";
     const note = fields.get("note") || undefined;
-    const ranges = parseWeeks(requireField(fields, "weeks", `course block ${blockIndex} Weeks`));
+    const ranges = parseWeeks(requireField(fields, "weeks", `? ${blockIndex} ???? Weeks`));
     const color = parseColor(fields.get("color")) || colorForCourse(name);
 
     return ranges.map(([startWeek, endWeek]) => ({ name, teacher, room, dayOfWeek, startTime, endTime, startWeek, endWeek, note, color }));
@@ -152,9 +152,9 @@ function parseLooseSchedule(text: string): ParsedTextSchedule {
     const warnings: string[] = [];
     const lines = text.split("\n").map((line) => line.trim()).filter(Boolean);
     const semesterLine = lines.find((line) => /^semester\s*[:\uFF1A]/i.test(line));
-    if (!semesterLine) throw new Error("Loose format requires Semester");
+    if (!semesterLine) throw new Error("?????? Semester ??");
     const semesterTag = valueAfterColon(semesterLine);
-    if (!semesterTag) throw new Error("Semester cannot be empty");
+    if (!semesterTag) throw new Error("Semester ????");
 
     let startDate = "";
     const startDateLine = lines.find((line) => /^startdate\s*[:\uFF1A]/i.test(line));
@@ -163,7 +163,7 @@ function parseLooseSchedule(text: string): ParsedTextSchedule {
         validateIsoDate(startDate, "StartDate");
     } else {
         startDate = inferFirstMondayFromSemester(semesterTag);
-        warnings.push(`StartDate not provided; inferred ${startDate} from ${semesterTag}`);
+        warnings.push(`??? StartDate??? ${semesterTag} ???????????? ${startDate}`);
     }
 
     const courses: TextScheduleCourse[] = [];
@@ -179,14 +179,14 @@ function parseLooseSchedule(text: string): ParsedTextSchedule {
 
         const [startTime, endTime] = parseTimeRange(lines[i]);
         const name = lines[i + 1]?.trim();
-        if (!name || isMetadataLine(name) || looksLikeTimeRange(name)) throw new Error(`Missing course name after line ${i + 1}`);
+        if (!name || isMetadataLine(name) || looksLikeTimeRange(name)) throw new Error(`????? ${i + 1} ???????`);
 
         const teacherLine = lines[i + 2] || "";
         const roomLine = lines[i + 3] || "";
         const weekLine = lines[i + 4] || "";
         const teacher = /^lecturer\s*[:\uFF1A]|^teacher\s*[:\uFF1A]/i.test(teacherLine) ? valueAfterColon(teacherLine) : "";
         const room = /^venue\s*[:\uFF1A]|^room\s*[:\uFF1A]/i.test(roomLine) ? valueAfterColon(roomLine) : "";
-        if (!/^week\s*[:\uFF1A]|^weeks\s*[:\uFF1A]/i.test(weekLine)) throw new Error(`Missing Week for ${name}`);
+        if (!/^week\s*[:\uFF1A]|^weeks\s*[:\uFF1A]/i.test(weekLine)) throw new Error(`???${name}??? Week ??`);
 
         const ranges = parseWeeks(valueAfterColon(weekLine));
         const cleanName = name.replace(/\s+[\u2014-]\s+/g, " - ");
@@ -196,7 +196,7 @@ function parseLooseSchedule(text: string): ParsedTextSchedule {
         i += 4;
     }
 
-    if (courses.length === 0) throw new Error("No courses parsed from text");
+    if (courses.length === 0) throw new Error("???????????");
     const maxWeeks = Math.max(...courses.map((course) => course.endWeek));
     return { format: "loose", semesterTag, startDate, timezone: "Asia/Shanghai", maxWeeks, school: "Manual Import", importMode: "replace", courses, warnings };
 }
@@ -219,7 +219,7 @@ function parseFields(block: string): Map<string, string> {
 
 function requireField(fields: Map<string, string>, key: string, label: string): string {
     const value = fields.get(key)?.trim();
-    if (!value) throw new Error(`${label} cannot be empty`);
+    if (!value) throw new Error(`${label} ????`);
     return value;
 }
 
@@ -227,12 +227,12 @@ function parseImportMode(value: string | undefined): TextScheduleImportMode {
     if (!value) return "replace";
     const normalized = value.trim().toLowerCase();
     if (normalized === "replace" || normalized === "append" || normalized === "new") return normalized;
-    throw new Error("ImportMode must be replace, append, or new");
+    throw new Error("ImportMode ??? replace?append ? new");
 }
 
 function parseDay(value: string): number {
     const day = parseDayOrNull(value);
-    if (!day) throw new Error(`Unknown day: ${value}`);
+    if (!day) throw new Error(`???????${value}`);
     return day;
 }
 
@@ -243,10 +243,10 @@ function parseDayOrNull(value: string): number | null {
 
 function parseTimeRange(value: string): [string, string] {
     const match = value.trim().match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*-\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
-    if (!match) throw new Error(`Invalid time range: ${value}`);
+    if (!match) throw new Error(`????????${value}`);
     const start = normalizeClock(match[1], match[2] || "00", match[3], match[6]);
     const end = normalizeClock(match[4], match[5] || "00", match[6], match[3]);
-    if (start >= end) throw new Error(`End time must be later than start time: ${value}`);
+    if (start >= end) throw new Error(`?????????????${value}`);
     return [start, end];
 }
 
@@ -254,10 +254,10 @@ function normalizeClock(hourText: string, minuteText: string, marker: string | u
     let hour = Number(hourText);
     const minute = Number(minuteText);
     const period = (marker || fallbackMarker || "").toLowerCase();
-    if (!Number.isInteger(hour) || !Number.isInteger(minute) || minute < 0 || minute > 59) throw new Error("Invalid time");
+    if (!Number.isInteger(hour) || !Number.isInteger(minute) || minute < 0 || minute > 59) throw new Error("???????");
     if (period === "pm" && hour < 12) hour += 12;
     if (period === "am" && hour === 12) hour = 0;
-    if (hour < 0 || hour > 23) throw new Error("Hour must be 0-23");
+    if (hour < 0 || hour > 23) throw new Error("????? 0-23 ??");
     return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
@@ -273,10 +273,10 @@ function parseWeeks(value: string): [number, number][] {
 
     for (const part of body.split(",").map((item) => item.trim()).filter(Boolean)) {
         const rangeMatch = part.match(/^(\d+)(?:\s*-\s*(\d+))?$/);
-        if (!rangeMatch) throw new Error(`Invalid weeks: ${value}`);
+        if (!rangeMatch) throw new Error(`???????${value}`);
         const start = Number(rangeMatch[1]);
         const end = Number(rangeMatch[2] || rangeMatch[1]);
-        if (start < 1 || end < start) throw new Error(`Invalid week range: ${value}`);
+        if (start < 1 || end < start) throw new Error(`????????${value}`);
         if (parity) {
             for (let week = start; week <= end; week++) {
                 if ((parity === "odd" && week % 2 === 1) || (parity === "even" && week % 2 === 0)) ranges.push([week, week]);
@@ -285,23 +285,23 @@ function parseWeeks(value: string): [number, number][] {
             ranges.push([start, end]);
         }
     }
-    if (ranges.length === 0) throw new Error(`Weeks cannot be empty: ${value}`);
+    if (ranges.length === 0) throw new Error(`???????${value}`);
     return ranges;
 }
 
 function parsePositiveInt(value: string, label: string): number {
     const parsed = Number(value);
-    if (!Number.isInteger(parsed) || parsed < 1) throw new Error(`${label} must be a positive integer`);
+    if (!Number.isInteger(parsed) || parsed < 1) throw new Error(`${label} ??????`);
     return parsed;
 }
 
 function validateIsoDate(value: string, label: string) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(new Date(`${value}T00:00:00`).getTime())) throw new Error(`${label} must be YYYY-MM-DD`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(new Date(`${value}T00:00:00`).getTime())) throw new Error(`${label} ??? YYYY-MM-DD ??`);
 }
 
 function parseColor(value: string | undefined): string | null {
     if (!value) return null;
-    if (!/^#[0-9a-f]{6}$/i.test(value.trim())) throw new Error(`Color must be #rrggbb: ${value}`);
+    if (!/^#[0-9a-f]{6}$/i.test(value.trim())) throw new Error(`Color ??? #rrggbb ???${value}`);
     return value.trim().toLowerCase();
 }
 
@@ -321,7 +321,7 @@ function isMetadataLine(line: string): boolean {
 
 function inferFirstMondayFromSemester(semesterTag: string): string {
     const match = semesterTag.match(/(\d{4})\D+(\d{1,2})/);
-    if (!match) throw new Error("Loose format needs StartDate or parseable Semester");
+    if (!match) throw new Error("?????? StartDate????? Semester ????");
     const year = Number(match[1]);
     const monthIndex = Number(match[2]) - 1;
     const date = new Date(year, monthIndex, 1);

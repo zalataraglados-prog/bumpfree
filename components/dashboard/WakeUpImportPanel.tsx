@@ -17,7 +17,7 @@ interface ImportPanelProps {
     hasSchedule: boolean;
 }
 
-const DAY_NAMES = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAY_NAMES = ["", "??", "??", "??", "??", "??", "??", "??"];
 
 export function WakeUpImportPanel({ hasSchedule }: ImportPanelProps) {
     return (
@@ -25,17 +25,17 @@ export function WakeUpImportPanel({ hasSchedule }: ImportPanelProps) {
             <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
                     <Download className="w-4 h-4" />
-                    Import schedule
+                    ????
                 </CardTitle>
                 <CardDescription>
-                    Use WakeUp share code, or paste text prepared in BumpFree v1 format.
+                    ?? WakeUp ??????????? BumpFree v1 ?????
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <Tabs defaultValue="wakeup" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="wakeup">WakeUp code</TabsTrigger>
-                        <TabsTrigger value="text">Text import</TabsTrigger>
+                        <TabsTrigger value="wakeup">WakeUp ???</TabsTrigger>
+                        <TabsTrigger value="text">????</TabsTrigger>
                     </TabsList>
                     <TabsContent value="wakeup" className="pt-3">
                         <WakeUpCodeImport hasSchedule={hasSchedule} />
@@ -60,7 +60,7 @@ function WakeUpCodeImport({ hasSchedule }: ImportPanelProps) {
             if (result.error) {
                 toast.error(result.error);
             } else {
-                toast.success(`Imported ${result.semesterTag}, ${result.courseCount} courses`);
+                toast.success(`????${result.semesterTag}??? ${result.courseCount} ???`);
                 setToken("");
             }
         });
@@ -69,10 +69,10 @@ function WakeUpCodeImport({ hasSchedule }: ImportPanelProps) {
     return (
         <div className="space-y-3">
             <div className="space-y-2">
-                <Label htmlFor="wakeup-token">Share code or full WakeUp message</Label>
+                <Label htmlFor="wakeup-token">??????? WakeUp ????</Label>
                 <Textarea
                     id="wakeup-token"
-                    placeholder="Paste the full WakeUp share message, or the 32-character key..."
+                    placeholder="???? WakeUp ?????????? 32 ???..."
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
                     rows={3}
@@ -81,15 +81,15 @@ function WakeUpCodeImport({ hasSchedule }: ImportPanelProps) {
             </div>
             <Button onClick={handleImport} disabled={isPending || !token.trim()} className="w-full">
                 {isPending ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Importing...</>
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />????...</>
                 ) : (
-                    <><Download className="w-4 h-4 mr-2" />Import from WakeUp</>
+                    <><Download className="w-4 h-4 mr-2" />? WakeUp ??</>
                 )}
             </Button>
             {hasSchedule && (
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3 text-green-500" />
-                    Importing the same semester will replace existing courses.
+                    ??????????????
                 </p>
             )}
         </div>
@@ -105,8 +105,8 @@ function TextScheduleImport() {
 
     function copyText(value: string, label: string) {
         void navigator.clipboard.writeText(value).then(
-            () => toast.success(`${label} copied`),
-            () => toast.error(`Failed to copy ${label}`)
+            () => toast.success(`???${label}`),
+            () => toast.error(`??${label}??`)
         );
     }
 
@@ -118,7 +118,7 @@ function TextScheduleImport() {
             setParseError(null);
         } catch (e) {
             setPreview(null);
-            setParseError(e instanceof Error ? e.message : "Failed to parse schedule text");
+            setParseError(e instanceof Error ? e.message : "????????");
         }
     }
 
@@ -141,7 +141,7 @@ function TextScheduleImport() {
                 toast.error(result.error);
                 return;
             }
-            toast.success(`Imported ${result.semesterTag}, ${result.courseCount} courses`);
+            toast.success(`????${result.semesterTag}??? ${result.courseCount} ???`);
             setText("");
             setPreview(null);
             setParseError(null);
@@ -151,24 +151,24 @@ function TextScheduleImport() {
     return (
         <div className="space-y-4">
             <div className="grid gap-2 sm:grid-cols-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => copyText(getScheduleTemplate(), "template")}> 
-                    <FileText className="w-4 h-4 mr-2" />Copy format template
+                <Button type="button" variant="outline" size="sm" onClick={() => copyText(getScheduleTemplate(), "????")}> 
+                    <FileText className="w-4 h-4 mr-2" />??????
                 </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => copyText(getAiCleanupPrompt(), "AI prompt")}> 
-                    <Clipboard className="w-4 h-4 mr-2" />Copy AI cleanup prompt
+                <Button type="button" variant="outline" size="sm" onClick={() => copyText(getAiCleanupPrompt(), "AI ?????")}> 
+                    <Clipboard className="w-4 h-4 mr-2" />?? AI ?????
                 </Button>
             </div>
 
             <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
-                <p>Paste BumpFree Schedule Import v1 text directly, or ask an AI tool to convert a school timetable, OCR text, Excel copy, or chat message into the v1 format first.</p>
-                <p>Nothing is saved until the parsed preview is confirmed.</p>
+                <p>?????? BumpFree Schedule Import v1 ???????? AI ???????? OCR?Excel ?????????? v1 ???</p>
+                <p>????????????????</p>
             </div>
 
             <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                    <Label htmlFor="schedule-text">Schedule text</Label>
+                    <Label htmlFor="schedule-text">????</Label>
                     <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer">
-                        <Upload className="w-3.5 h-3.5" />Upload .txt
+                        <Upload className="w-3.5 h-3.5" />?? .txt
                         <input
                             type="file"
                             accept=".txt,text/plain"
@@ -185,7 +185,7 @@ function TextScheduleImport() {
                         setPreview(null);
                         setParseError(null);
                     }}
-                    placeholder="Paste BumpFree v1 text or a supported loose timetable here..."
+                    placeholder="?? BumpFree v1 ??????????????..."
                     rows={10}
                     className="font-mono text-xs resize-y"
                 />
@@ -193,18 +193,18 @@ function TextScheduleImport() {
 
             <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
                 <Button type="button" variant="outline" onClick={handleParse} disabled={!text.trim()}>
-                    Parse preview
+                    ????
                 </Button>
                 <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Mode</span>
+                    <span className="text-xs text-muted-foreground">????</span>
                     <Select value={importMode} onValueChange={(value) => setImportMode(value as TextScheduleImportMode)}>
                         <SelectTrigger className="w-32" size="sm">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="replace">replace</SelectItem>
-                            <SelectItem value="append">append</SelectItem>
-                            <SelectItem value="new">new copy</SelectItem>
+                            <SelectItem value="replace">??</SelectItem>
+                            <SelectItem value="append">??</SelectItem>
+                            <SelectItem value="new">????</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -219,11 +219,11 @@ function TextScheduleImport() {
             {preview && (
                 <div className="space-y-3 rounded-md border border-border/60 p-3">
                     <div className="flex flex-wrap items-center gap-2 text-sm">
-                        <Badge variant="secondary">{preview.format}</Badge>
+                        <Badge variant="secondary">{preview.format === "strict" ? "????" : "????"}</Badge>
                         <span className="font-medium">{preview.semesterTag}</span>
-                        <span className="text-muted-foreground">Start {preview.startDate}</span>
-                        <span className="text-muted-foreground">{preview.maxWeeks} weeks</span>
-                        <span className="text-muted-foreground">{preview.courses.length} courses</span>
+                        <span className="text-muted-foreground">?? {preview.startDate}</span>
+                        <span className="text-muted-foreground">{preview.maxWeeks} ?</span>
+                        <span className="text-muted-foreground">{preview.courses.length} ???</span>
                     </div>
                     {preview.warnings.length > 0 && (
                         <div className="rounded-md bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300">
@@ -234,11 +234,11 @@ function TextScheduleImport() {
                         <table className="w-full text-xs">
                             <thead className="text-muted-foreground">
                                 <tr className="border-b">
-                                    <th className="py-1 pr-2 text-left">Day</th>
-                                    <th className="py-1 pr-2 text-left">Time</th>
-                                    <th className="py-1 pr-2 text-left">Course</th>
-                                    <th className="py-1 pr-2 text-left">Room</th>
-                                    <th className="py-1 pr-2 text-left">Weeks</th>
+                                    <th className="py-1 pr-2 text-left">??</th>
+                                    <th className="py-1 pr-2 text-left">??</th>
+                                    <th className="py-1 pr-2 text-left">??</th>
+                                    <th className="py-1 pr-2 text-left">??</th>
+                                    <th className="py-1 pr-2 text-left">??</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -255,10 +255,10 @@ function TextScheduleImport() {
                         </table>
                     </div>
                     {preview.courses.length > 8 && (
-                        <p className="text-xs text-muted-foreground">...and {preview.courses.length - 8} more courses</p>
+                        <p className="text-xs text-muted-foreground">?? {preview.courses.length - 8} ??????</p>
                     )}
                     <Button onClick={handleImport} disabled={isPending} className="w-full">
-                        {isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Importing...</> : "Confirm import"}
+                        {isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />????...</> : "????"}
                     </Button>
                 </div>
             )}

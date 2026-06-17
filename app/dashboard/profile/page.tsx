@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { WakeUpImportPanel } from "@/components/dashboard/WakeUpImportPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Calendar, CheckCircle2 } from "lucide-react";
+import { BookOpen, Calendar } from "lucide-react";
 import { setActiveSchedule } from "@/lib/actions/courses";
 import { Button } from "@/components/ui/button";
 import { DeleteScheduleButton } from "@/components/dashboard/DeleteScheduleButton";

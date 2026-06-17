@@ -167,18 +167,18 @@ export async function importTextSchedule(text: string, importModeOverride?: Text
     const {
         data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { error: "Please sign in first" };
-    if (text.length > 100_000) return { error: "Schedule text is too large" };
+    if (!user) return { error: "????" };
+    if (text.length > 100_000) return { error: "??????" };
 
     let parsed: ParsedTextSchedule;
     try {
         parsed = parseTextSchedule(text);
     } catch (e) {
-        return { error: e instanceof Error ? e.message : "Failed to parse schedule text" };
+        return { error: e instanceof Error ? e.message : "????????" };
     }
 
     const importMode = importModeOverride ?? parsed.importMode;
-    if (!["replace", "append", "new"].includes(importMode)) return { error: "Invalid import mode" };
+    if (!["replace", "append", "new"].includes(importMode)) return { error: "???????" };
 
     const { data: profile } = await supabase
         .from("profiles")
@@ -200,7 +200,7 @@ export async function importTextSchedule(text: string, importModeOverride?: Text
 
     const needsNewSchedule = importMode === "new" || !existingSchedule;
     if (needsNewSchedule && profile && scheduleCount !== null && scheduleCount >= profile.schedule_quota) {
-        return { error: `Schedule quota reached (${profile.schedule_quota})` };
+        return { error: `??????????${profile.schedule_quota} ??` };
     }
 
     let schedule: { id: string } | null = null;
@@ -221,7 +221,7 @@ export async function importTextSchedule(text: string, importModeOverride?: Text
             })
             .select("id")
             .single();
-        if (error || !data) return { error: `Failed to create schedule: ${error?.message || "empty response"}` };
+        if (error || !data) return { error: `???????${error?.message || "????"}` };
         schedule = data;
     } else if (existingSchedule) {
         const { data, error } = await supabase
@@ -237,11 +237,11 @@ export async function importTextSchedule(text: string, importModeOverride?: Text
             .eq("id", existingSchedule.id)
             .select("id")
             .single();
-        if (error || !data) return { error: `Failed to update schedule: ${error?.message || "empty response"}` };
+        if (error || !data) return { error: `???????${error?.message || "????"}` };
         schedule = data;
         if (importMode === "replace") {
             const { error: deleteErr } = await supabase.from("courses").delete().eq("schedule_id", schedule.id);
-            if (deleteErr) return { error: `Failed to replace existing courses: ${deleteErr.message}` };
+            if (deleteErr) return { error: `?????????${deleteErr.message}` };
         }
     } else {
         const { data, error } = await supabase
@@ -257,7 +257,7 @@ export async function importTextSchedule(text: string, importModeOverride?: Text
             })
             .select("id")
             .single();
-        if (error || !data) return { error: `Failed to create schedule: ${error?.message || "empty response"}` };
+        if (error || !data) return { error: `???????${error?.message || "????"}` };
         schedule = data;
     }
 
@@ -276,7 +276,7 @@ export async function importTextSchedule(text: string, importModeOverride?: Text
     }));
 
     const { error: insertErr } = await supabase.from("courses").insert(courseRows);
-    if (insertErr) return { error: `Failed to save courses: ${insertErr.message}` };
+    if (insertErr) return { error: `???????${insertErr.message}` };
 
     revalidatePath("/dashboard/profile");
     return {

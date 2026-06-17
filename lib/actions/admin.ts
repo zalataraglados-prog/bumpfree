@@ -90,7 +90,7 @@ export async function getAllUsers() {
         });
 
         if (error) {
-            throw new Error(`Failed to list users: ${error.message}`);
+            throw new Error(`?????????${error.message}`);
         }
 
         const users = authData.users ?? [];

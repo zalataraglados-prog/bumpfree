@@ -86,7 +86,7 @@ export function parseWakeUpResponse(rawText: string): ParsedSchedule {
         .filter((l) => l.length > 0);
 
     if (lines.length < 5) {
-        throw new Error("Invalid WakeUp API response: insufficient segments");
+        throw new Error("WakeUp API ???????");
     }
 
     // Segment 2: time nodes array

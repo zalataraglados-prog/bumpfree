@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { AdminUsersClient } from "@/components/admin/AdminUsersClient";
-import { getGlobalStats } from "@/lib/actions/admin";
+import { getAllUsers, getGlobalStats } from "@/lib/actions/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, DoorOpen } from "lucide-react";
 import { PageWrapper } from "@/components/motion/PageWrapper";

@@ -57,10 +57,6 @@ export function RoomManageCard({ room }: RoomManageCardProps) {
 
     function handleSearch(q: string) {
         setSearchQuery(q);
-        if (q.length < 2) {
-            setSearchResults([]);
-            return;
-        }
         startSearchTransition(async () => {
             const results = await searchUsers(q);
             setSearchResults(results);
@@ -122,7 +118,6 @@ export function RoomManageCard({ room }: RoomManageCardProps) {
                     <span>{memberCount} 名成员</span>
                 </div>
 
-                {/* Action buttons */}
                 <div className="flex flex-wrap gap-2">
                     <Link href={`/room/${room.id}`}>
                         <Button variant="outline" size="sm" className="gap-1.5">
@@ -141,8 +136,18 @@ export function RoomManageCard({ room }: RoomManageCardProps) {
                         复制链接
                     </Button>
 
-                    {/* Invite dialog */}
-                    <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+                    <Dialog
+                        open={inviteOpen}
+                        onOpenChange={(open) => {
+                            setInviteOpen(open);
+                            if (open) {
+                                handleSearch("");
+                            } else {
+                                setSearchQuery("");
+                                setSearchResults([]);
+                            }
+                        }}
+                    >
                         <DialogTrigger asChild>
                             <Button variant="outline" size="sm" className="gap-1.5">
                                 <UserPlus className="w-3.5 h-3.5" />
@@ -184,8 +189,10 @@ export function RoomManageCard({ room }: RoomManageCardProps) {
                                         ))}
                                     </div>
                                 )}
-                                {searchQuery.length >= 2 && !isSearching && searchResults.length === 0 && (
-                                    <p className="text-sm text-muted-foreground text-center py-2">没有找到用户</p>
+                                {!isSearching && searchResults.length === 0 && (
+                                    <p className="text-sm text-muted-foreground text-center py-2">
+                                        {searchQuery.trim() ? "没有找到用户" : "暂无可邀请用户"}
+                                    </p>
                                 )}
                             </div>
                         </DialogContent>

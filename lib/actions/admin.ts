@@ -41,7 +41,8 @@ function normalizeDisplayName(
     const profileName = profileDisplayName?.trim();
     const emailLocalPart = email?.split("@")[0];
     const isNumericEmailFallback =
-        Boolean(profileName && emailLocalPart) &&
+        typeof profileName === "string" &&
+        typeof emailLocalPart === "string" &&
         profileName === emailLocalPart &&
         /^\d+$/.test(profileName);
 

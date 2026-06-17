@@ -30,6 +30,21 @@ export async function loginAction(formData: FormData) {
     const { error } = await supabase.auth.signInWithPassword(parsed.data);
     if (error) return { error: "邮箱或密码错误" };
 
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+        const displayName =
+            (user.user_metadata?.display_name as string | undefined) ||
+            (user.email ? user.email.split("@")[0] : null);
+
+        await supabase.from("profiles").upsert({
+            id: user.id,
+            display_name: displayName,
+        });
+    }
+
     redirect("/dashboard");
 }
 
@@ -47,6 +62,9 @@ export async function registerAction(formData: FormData) {
         email: parsed.data.email,
         password: parsed.data.password,
         options: {
+            data: {
+                display_name: parsed.data.displayName,
+            },
             emailRedirectTo: `${SITE_URL}/auth/callback`,
         },
     });

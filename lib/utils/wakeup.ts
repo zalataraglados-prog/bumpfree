@@ -86,7 +86,7 @@ export function parseWakeUpResponse(rawText: string): ParsedSchedule {
         .filter((l) => l.length > 0);
 
     if (lines.length < 5) {
-        throw new Error("WakeUp API ???????");
+        throw new Error("WakeUp API \u8fd4\u56de\u6570\u636e\u683c\u5f0f\u9519\u8bef");
     }
 
     // Segment 2: time nodes array

@@ -26,18 +26,18 @@ export async function importTextSchedule(text: string, importModeOverride?: Text
     const {
         data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { error: "????" };
-    if (text.length > 100_000) return { error: "??????" };
+    if (!user) return { error: "\u8bf7\u5148\u767b\u5f55" };
+    if (text.length > 100_000) return { error: "\u6587\u672c\u8fc7\u957f" };
 
     let parsed: ParsedTextSchedule;
     try {
         parsed = parseTextSchedule(text);
     } catch (e) {
-        return { error: e instanceof Error ? e.message : "????????" };
+        return { error: e instanceof Error ? e.message : "\u89e3\u6790\u8bfe\u8868\u5931\u8d25" };
     }
 
     const importMode = importModeOverride ?? parsed.importMode;
-    if (!["replace", "append", "new"].includes(importMode)) return { error: "???????" };
+    if (!["replace", "append", "new"].includes(importMode)) return { error: "\u5bfc\u5165\u65b9\u5f0f\u4e0d\u652f\u6301" };
 
     const { data: profile } = await supabase
         .from("profiles")
@@ -59,7 +59,7 @@ export async function importTextSchedule(text: string, importModeOverride?: Text
 
     const needsNewSchedule = importMode === "new" || !existingSchedule;
     if (needsNewSchedule && profile && scheduleCount !== null && scheduleCount >= profile.schedule_quota) {
-        return { error: `??????????${profile.schedule_quota} ??` };
+        return { error: `\u8bfe\u8868\u6570\u91cf\u5df2\u8fbe\u5230\u4e0a\u9650\uff1a${profile.schedule_quota} \u4efd` };
     }
 
     let schedule: { id: string } | null = null;
@@ -80,7 +80,7 @@ export async function importTextSchedule(text: string, importModeOverride?: Text
             })
             .select("id")
             .single();
-        if (error || !data) return { error: `???????${error?.message || "????"}` };
+        if (error || !data) return { error: `\u4fdd\u5b58\u8bfe\u8868\u5931\u8d25\uff1a${error?.message || "\u672a\u77e5\u9519\u8bef"}` };
         schedule = data;
     } else if (existingSchedule) {
         const { data, error } = await supabase
@@ -96,11 +96,11 @@ export async function importTextSchedule(text: string, importModeOverride?: Text
             .eq("id", existingSchedule.id)
             .select("id")
             .single();
-        if (error || !data) return { error: `???????${error?.message || "????"}` };
+        if (error || !data) return { error: `\u4fdd\u5b58\u8bfe\u8868\u5931\u8d25\uff1a${error?.message || "\u672a\u77e5\u9519\u8bef"}` };
         schedule = data;
         if (importMode === "replace") {
             const { error: deleteErr } = await supabase.from("courses").delete().eq("schedule_id", schedule.id);
-            if (deleteErr) return { error: `?????????${deleteErr.message}` };
+            if (deleteErr) return { error: `\u6e05\u7406\u65e7\u8bfe\u7a0b\u5931\u8d25\uff1a${deleteErr.message}` };
         }
     } else {
         const { data, error } = await supabase
@@ -116,7 +116,7 @@ export async function importTextSchedule(text: string, importModeOverride?: Text
             })
             .select("id")
             .single();
-        if (error || !data) return { error: `???????${error?.message || "????"}` };
+        if (error || !data) return { error: `\u4fdd\u5b58\u8bfe\u8868\u5931\u8d25\uff1a${error?.message || "\u672a\u77e5\u9519\u8bef"}` };
         schedule = data;
     }
 
@@ -135,7 +135,7 @@ export async function importTextSchedule(text: string, importModeOverride?: Text
     }));
 
     const { error: insertErr } = await supabase.from("courses").insert(courseRows);
-    if (insertErr) return { error: `???????${insertErr.message}` };
+    if (insertErr) return { error: `\u5bfc\u5165\u8bfe\u7a0b\u5931\u8d25\uff1a${insertErr.message}` };
 
     revalidatePath("/dashboard/profile");
     return {

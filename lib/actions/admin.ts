@@ -90,7 +90,7 @@ export async function getAllUsers() {
         });
 
         if (error) {
-            throw new Error(`?????????${error.message}`);
+            throw new Error(`\u83b7\u53d6\u7ba1\u7406\u5458\u4fe1\u606f\u5931\u8d25\uff1a${error.message}`);
         }
 
         const users = authData.users ?? [];

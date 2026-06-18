@@ -29,9 +29,9 @@ export default async function RoomPage({ params }: RoomPageProps) {
             <div className="min-h-screen flex items-center justify-center bg-background px-4">
                 <div className="text-center max-w-sm">
                     <Lock className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                    <h1 className="text-xl font-semibold mb-2">?????</h1>
-                    <p className="text-muted-foreground text-sm mb-6">????? Room ????????????? Room ????????</p>
-                    <Link href="/dashboard"><Button variant="outline">?? Dashboard</Button></Link>
+                    <h1 className="text-xl font-semibold mb-2">{ "\u65e0\u8bbf\u95ee\u6743\u9650" }</h1>
+                    <p className="text-muted-foreground text-sm mb-6">{ "\u4f60\u9700\u8981\u662f\u8be5 Room \u7684\u6210\u5458\u624d\u80fd\u67e5\u770b\u65e5\u5386\u3002\u8bf7\u8054\u7cfb Room \u7ba1\u7406\u5458\u83b7\u53d6\u9080\u8bf7\u3002" }</p>
+                    <Link href="/dashboard"><Button variant="outline">{ "\u8fd4\u56de Dashboard" }</Button></Link>
                 </div>
             </div>
         );
@@ -44,7 +44,7 @@ export default async function RoomPage({ params }: RoomPageProps) {
         if (!schedule) return null;
         const { data: courses } = await supabase.from("courses").select("*").eq("schedule_id", schedule.id).eq("user_id", member.user_id);
         const profile = Array.isArray(member.profile) ? member.profile[0] : member.profile;
-        return { userId: member.user_id, displayName: (profile as { display_name: string | null } | null)?.display_name ?? "????", color: member.color, schedule, courses: courses ?? [], busyBlocks: busyBlocks ?? [] };
+        return { userId: member.user_id, displayName: (profile as { display_name: string | null } | null)?.display_name ?? "\u672a\u77e5\u7528\u6237", color: member.color, schedule, courses: courses ?? [], busyBlocks: busyBlocks ?? [] };
     }));
 
     const validMemberData = memberData.filter(Boolean) as NonNullable<typeof memberData[0]>[];

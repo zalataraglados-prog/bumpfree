@@ -5,6 +5,16 @@ import { parseTextSchedule, type ParsedTextSchedule, type TextScheduleImportMode
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+const manualCourseSlotSchema = z.object({
+    room: z.string().optional(),
+    dayOfWeek: z.coerce.number().min(1).max(7),
+    startTime: z.string().regex(/^\d{2}:\d{2}$/),
+    endTime: z.string().regex(/^\d{2}:\d{2}$/),
+    startWeek: z.coerce.number().min(1),
+    endWeek: z.coerce.number().min(1),
+}).refine((slot) => slot.endTime > slot.startTime, { message: "end_after_start" })
+    .refine((slot) => slot.endWeek >= slot.startWeek, { message: "week_range" });
+
 const manualCourseSchema = z.object({
     scheduleId: z.string().uuid(),
     name: z.string().min(1),
@@ -15,6 +25,13 @@ const manualCourseSchema = z.object({
     endTime: z.string().regex(/^\d{2}:\d{2}$/),
     startWeek: z.coerce.number().min(1),
     endWeek: z.coerce.number().min(1),
+});
+
+const addManualCourseSchema = z.object({
+    scheduleId: z.string().uuid(),
+    name: z.string().min(1),
+    teacher: z.string().optional(),
+    slots: z.array(manualCourseSlotSchema).min(1).max(12),
 });
 
 const updateCourseSchema = manualCourseSchema.extend({
@@ -168,38 +185,55 @@ export async function addManualCourse(formData: FormData) {
     const {
         data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { error: "请先登录" };
+    if (!user) return { error: "\u8bf7\u5148\u767b\u5f55" };
 
-    const parsed = manualCourseSchema.safeParse({
+    const parsed = addManualCourseSchema.safeParse({
         scheduleId: formData.get("scheduleId"),
         name: formData.get("name"),
-        room: formData.get("room"),
         teacher: formData.get("teacher"),
+        slots: parseManualCourseSlots(formData),
+    });
+
+    if (!parsed.success) return { error: "\u8bf7\u68c0\u67e5\u8bfe\u7a0b\u65f6\u95f4\u6bb5" };
+
+    const rows = parsed.data.slots.map((slot) => ({
+        schedule_id: parsed.data.scheduleId,
+        user_id: user.id,
+        name: parsed.data.name,
+        room: slot.room || null,
+        teacher: parsed.data.teacher || null,
+        day_of_week: slot.dayOfWeek,
+        start_time: slot.startTime,
+        end_time: slot.endTime,
+        start_week: slot.startWeek,
+        end_week: slot.endWeek,
+    }));
+
+    const { error } = await supabase.from("courses").insert(rows);
+    if (error) return { error: `\u6dfb\u52a0\u8bfe\u7a0b\u5931\u8d25\uff1a${error.message}` };
+    revalidatePath("/dashboard/profile");
+    return { success: true, courseCount: rows.length };
+}
+
+function parseManualCourseSlots(formData: FormData) {
+    const slotsJson = formData.get("slotsJson");
+    if (typeof slotsJson === "string" && slotsJson.trim()) {
+        try {
+            const parsed = JSON.parse(slotsJson) as unknown;
+            if (Array.isArray(parsed)) return parsed;
+        } catch {
+            return [];
+        }
+    }
+
+    return [{
+        room: formData.get("room"),
         dayOfWeek: formData.get("dayOfWeek"),
         startTime: formData.get("startTime"),
         endTime: formData.get("endTime"),
         startWeek: formData.get("startWeek"),
         endWeek: formData.get("endWeek"),
-    });
-
-    if (!parsed.success) return { error: "请检查输入格式" };
-
-    const { error } = await supabase.from("courses").insert({
-        schedule_id: parsed.data.scheduleId,
-        user_id: user.id,
-        name: parsed.data.name,
-        room: parsed.data.room || null,
-        teacher: parsed.data.teacher || null,
-        day_of_week: parsed.data.dayOfWeek,
-        start_time: parsed.data.startTime,
-        end_time: parsed.data.endTime,
-        start_week: parsed.data.startWeek,
-        end_week: parsed.data.endWeek,
-    });
-
-    if (error) return { error: "添加课程失败" };
-    revalidatePath("/dashboard/profile");
-    return { success: true };
+    }];
 }
 
 /**

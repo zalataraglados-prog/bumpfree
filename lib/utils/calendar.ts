@@ -1,62 +1,42 @@
 import { addDays, addWeeks, parseISO, setHours, setMinutes, startOfWeek } from "date-fns";
-import type { CalendarEvent, Course, Schedule } from "@/lib/types";
+import type { BusyBlock, CalendarEvent, Course, MalaysiaHoliday, Schedule } from "@/lib/types";
 
-/**
- * Given a semester's schedule config and course rows, expand all weekly
- * recurring course slots into concrete CalendarEvent instances.
- *
- * @param courses - Course rows from the DB for a given member
- * @param schedule - The schedule row (contains startDate, maxWeeks)
- * @param userId - Member's user ID
- * @param displayName - Member's display name
- * @param memberColor - Color assigned to this member in the room
- */
-export function expandCourses(
-    courses: Course[],
-    schedule: Schedule,
-    userId: string,
-    displayName: string,
-    memberColor: string
-): CalendarEvent[] {
+export function expandCourses(courses: Course[], schedule: Schedule, userId: string, displayName: string, memberColor: string): CalendarEvent[] {
     const events: CalendarEvent[] = [];
-
-    // WakeUp startDate is week 1's Monday
-    // day_of_week: 1=Mon, 7=Sun (matches WakeUp convention)
-    const semesterStart = parseISO(schedule.start_date);
-    // Normalize to Monday of that week
-    const week1Monday = startOfWeek(semesterStart, { weekStartsOn: 1 });
-
+    const week1Monday = startOfWeek(parseISO(schedule.start_date), { weekStartsOn: 1 });
     for (const course of courses) {
         for (let week = course.start_week; week <= course.end_week; week++) {
-            // Monday of the target week
-            const weekMonday = addWeeks(week1Monday, week - 1);
-
-            // day_of_week: 1=Mon(+0), 2=Tue(+1), ..., 7=Sun(+6)
-            const dayOffset = course.day_of_week - 1;
-            const courseDay = addDays(weekMonday, dayOffset);
-
-            // Parse time strings "HH:MM"
-            const startDate = applyTime(courseDay, course.start_time);
-            const endDate = applyTime(courseDay, course.end_time);
-
+            const courseDay = addDays(addWeeks(week1Monday, week - 1), course.day_of_week - 1);
             events.push({
                 id: `${course.id}-w${week}`,
                 title: `${displayName}: ${course.name}`,
-                start: startDate,
-                end: endDate,
-                resource: {
-                    userId,
-                    displayName,
-                    color: memberColor,
-                    courseName: course.name,
-                    room: course.room,
-                    teacher: course.teacher,
-                },
+                start: applyTime(courseDay, course.start_time),
+                end: applyTime(courseDay, course.end_time),
+                resource: { kind: "course", userId, displayName, color: memberColor, courseName: course.name, room: course.room, teacher: course.teacher },
             });
         }
     }
-
     return events;
+}
+
+export function expandBusyBlocks(blocks: BusyBlock[], userId: string, displayName: string, memberColor: string): CalendarEvent[] {
+    return blocks.map((block) => ({
+        id: block.id,
+        title: `${displayName}: ${block.title}`,
+        start: new Date(block.starts_at),
+        end: new Date(block.ends_at),
+        resource: { kind: "busy", userId, displayName, color: memberColor, courseName: block.title, room: null, teacher: null, note: block.note },
+    }));
+}
+
+export function expandMalaysiaHolidays(holidays: MalaysiaHoliday[]): CalendarEvent[] {
+    return holidays.map((holiday) => ({
+        id: holiday.id,
+        title: holiday.localName || holiday.name,
+        start: new Date(`${holiday.date}T07:00:00+08:00`),
+        end: new Date(`${holiday.date}T22:00:00+08:00`),
+        resource: { kind: "holiday", userId: "holiday-my", displayName: "MY", color: "#64748b", courseName: holiday.localName || holiday.name, room: null, teacher: null, note: holiday.name },
+    }));
 }
 
 function applyTime(date: Date, timeStr: string): Date {
@@ -64,9 +44,6 @@ function applyTime(date: Date, timeStr: string): Date {
     return setMinutes(setHours(new Date(date), h), m);
 }
 
-/**
- * Group events by date string "YYYY-MM-DD" for month view.
- */
 export function groupEventsByDate(events: CalendarEvent[]): Map<string, CalendarEvent[]> {
     const map = new Map<string, CalendarEvent[]>();
     for (const ev of events) {
@@ -77,16 +54,9 @@ export function groupEventsByDate(events: CalendarEvent[]): Map<string, Calendar
     return map;
 }
 
-/**
- * Get unique user IDs that have a course on a given date.
- */
 export function getUsersOnDate(events: CalendarEvent[], date: Date): string[] {
     const dateStr = date.toISOString().slice(0, 10);
     const usersOnDate = new Set<string>();
-    for (const ev of events) {
-        if (ev.start.toISOString().slice(0, 10) === dateStr) {
-            usersOnDate.add(ev.resource.userId);
-        }
-    }
+    for (const ev of events) if (ev.start.toISOString().slice(0, 10) === dateStr) usersOnDate.add(ev.resource.userId);
     return Array.from(usersOnDate);
 }

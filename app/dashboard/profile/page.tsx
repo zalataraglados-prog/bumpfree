@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { ScheduleImportPanel } from "@/components/dashboard/ScheduleImportPanel";
+import { RescheduleNoticeImportPanel } from "@/components/dashboard/RescheduleNoticeImportPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Calendar } from "lucide-react";
@@ -22,7 +23,6 @@ export default async function ProfilePage() {
     const { data: schedules } = await supabase
         .from("schedules")
         .select("*, courses(*)")
-        .eq("user_id", user.id)
         .eq("user_id", user.id)
         .order("imported_at", { ascending: false });
 
@@ -64,6 +64,8 @@ export default async function ProfilePage() {
             ) : (
                 <ScheduleImportPanel />
             )}
+
+            <RescheduleNoticeImportPanel />
 
             {/* Schedule list */}
             {hasSchedule && (

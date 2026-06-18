@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { WakeUpImportPanel } from "@/components/dashboard/WakeUpImportPanel";
+import { ScheduleImportPanel } from "@/components/dashboard/ScheduleImportPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Calendar } from "lucide-react";
@@ -43,7 +43,7 @@ export default async function ProfilePage() {
                 <div>
                     <h1 className="text-2xl font-bold">我的课表</h1>
                     <p className="text-muted-foreground text-sm mt-1">
-                        通过 WakeUp 口令导入课表数据，支持多课表存档管理
+                        通过文本导入课表数据，支持多课表存档管理
                     </p>
                 </div>
                 <div className="text-right">
@@ -62,7 +62,7 @@ export default async function ProfilePage() {
                     </div>
                 </div>
             ) : (
-                <WakeUpImportPanel hasSchedule={hasSchedule} />
+                <ScheduleImportPanel />
             )}
 
             {/* Schedule list */}
@@ -171,7 +171,7 @@ export default async function ProfilePage() {
                 <div className="text-center py-12 text-muted-foreground">
                     <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
                     <p>还没有导入任何课表</p>
-                    <p className="text-sm mt-1">从上方导入 WakeUp 分享口令开始</p>
+                    <p className="text-sm mt-1">从上方导入文本课表开始</p>
                 </div>
             )}
         </div>

@@ -62,12 +62,12 @@ export default async function RoomPage({ params }: RoomPageProps) {
                     <div className="flex items-center gap-3 min-w-0">
                         <Link href="/" className="flex items-center gap-1.5 flex-shrink-0"><Zap className="w-4 h-4 text-primary" /><span className="font-semibold text-sm hidden sm:block">BumpFree</span></Link>
                         <span className="text-border">/</span><h1 className="font-semibold text-sm truncate">{room.name}</h1>
-                        {room.is_public && !isMember && <Badge variant="secondary" className="text-xs gap-1 flex-shrink-0"><Globe className="w-3 h-3" />\u53ea\u8bfb</Badge>}
+                        {room.is_public && !isMember && <Badge variant="secondary" className="text-xs gap-1 flex-shrink-0"><Globe className="w-3 h-3" />{"\u53ea\u8bfb"}</Badge>}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                         <div className="flex items-center gap-1 text-sm text-muted-foreground"><Users className="w-4 h-4" /><span>{validMemberData.length}</span></div>
                         <div className="flex -space-x-1">{validMemberData.slice(0, 5).map((m) => <div key={m.userId} className="w-6 h-6 rounded-full border-2 border-background" style={{ backgroundColor: m.color }} title={m.displayName} />)}</div>
-                        {user ? <Link href="/dashboard"><Button variant="outline" size="sm">Dashboard</Button></Link> : <Link href="/auth/login"><Button variant="outline" size="sm">\u767b\u5f55</Button></Link>}
+                        {user ? <Link href="/dashboard"><Button variant="outline" size="sm">Dashboard</Button></Link> : <Link href="/auth/login"><Button variant="outline" size="sm">{"\u767b\u5f55"}</Button></Link>}
                     </div>
                 </div>
             </header>

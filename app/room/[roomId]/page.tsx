@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Lock, Globe, Users, Zap } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { getDisplayMemberColor } from "@/lib/utils/colors";
 
 interface RoomPageProps { params: Promise<{ roomId: string }>; }
 
@@ -38,13 +39,16 @@ export default async function RoomPage({ params }: RoomPageProps) {
     }
 
     const { data: members } = await supabase.from("room_members").select("user_id, color, profile:profiles(id, display_name)").eq("room_id", roomId);
+    const usedDisplayColors: string[] = [];
     const memberData = await Promise.all((members ?? []).map(async (member) => {
+        const displayColor = getDisplayMemberColor(member.user_id, member.color, usedDisplayColors);
+        usedDisplayColors.push(displayColor);
         const { data: schedule } = await supabase.from("schedules").select("id, semester_tag, start_date, max_weeks").eq("user_id", member.user_id).eq("is_active", true).single();
         const { data: busyBlocks } = await supabase.from("busy_blocks").select("*").eq("user_id", member.user_id).order("starts_at", { ascending: true });
         if (!schedule) return null;
         const { data: courses } = await supabase.from("courses").select("*").eq("schedule_id", schedule.id).eq("user_id", member.user_id);
         const profile = Array.isArray(member.profile) ? member.profile[0] : member.profile;
-        return { userId: member.user_id, displayName: (profile as { display_name: string | null } | null)?.display_name ?? "\u672a\u77e5\u7528\u6237", color: member.color, schedule, courses: courses ?? [], busyBlocks: busyBlocks ?? [] };
+        return { userId: member.user_id, displayName: (profile as { display_name: string | null } | null)?.display_name ?? "\u672a\u77e5\u7528\u6237", color: displayColor, schedule, courses: courses ?? [], busyBlocks: busyBlocks ?? [] };
     }));
 
     const validMemberData = memberData.filter(Boolean) as NonNullable<typeof memberData[0]>[];

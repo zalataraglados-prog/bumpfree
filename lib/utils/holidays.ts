@@ -14,8 +14,14 @@ export async function getMalaysiaPublicHolidays(years: number[]): Promise<Malays
 }
 
 async function fetchYear(year: number): Promise<MalaysiaHoliday[]> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2500);
+
     try {
-        const response = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/MY`, { next: { revalidate: 86400 } });
+        const response = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/MY`, {
+            next: { revalidate: 86400 },
+            signal: controller.signal,
+        });
         if (!response.ok) return [];
 
         const text = await response.text();
@@ -30,6 +36,8 @@ async function fetchYear(year: number): Promise<MalaysiaHoliday[]> {
             .map((item) => ({ id: `my-holiday-${item.date}`, date: item.date, localName: item.localName, name: item.name }));
     } catch {
         return [];
+    } finally {
+        clearTimeout(timeout);
     }
 }
 

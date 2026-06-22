@@ -53,8 +53,8 @@ export function AdminUsersClient({ users, currentUserId }: AdminUsersClientProps
                         <h2 className="text-base font-semibold">新增账号</h2>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        每行一个账号，格式：`邮箱,密码,昵称[,数量]`。数量默认 1。
-                        批量时可用 `{"{n}"}` 占位；如果不写，占位会自动追加到邮箱前缀和昵称末尾。
+                        每行一个账号，格式：邮箱,密码,昵称[,数量]。数量默认 1。
+                        批量时可用 {"{n}"} 占位；如果不写，占位会自动追加到邮箱前缀和昵称末尾。
                     </p>
                     <Textarea
                         value={bulkText}
@@ -114,21 +114,14 @@ function UserRow({ user, isSelf }: { user: AdminUser; isSelf: boolean }) {
     }
 
     return (
-        <motion.div
-            whileHover={{ scale: 1.015 }}
-            whileTap={{ scale: 0.97 }}
-            transition={springSnappy}
-        >
+        <motion.div whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.97 }} transition={springSnappy}>
             <Card>
                 <CardContent className="pt-4 pb-4">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-medium text-sm">{user.display_name}</span>
-                                <Badge
-                                    variant={user.role === "superadmin" ? "default" : "outline"}
-                                    className="text-xs gap-1"
-                                >
+                                <Badge variant={user.role === "superadmin" ? "default" : "outline"} className="text-xs gap-1">
                                     {user.role === "superadmin" ? <Shield className="w-3 h-3" /> : <User className="w-3 h-3" />}
                                     {user.role === "superadmin" ? "管理员" : "普通用户"}
                                 </Badge>
@@ -137,64 +130,28 @@ function UserRow({ user, isSelf }: { user: AdminUser; isSelf: boolean }) {
                             <p className="text-xs text-muted-foreground mt-0.5">
                                 注册于 {format(new Date(user.created_at), "yyyy年MM月dd日", { locale: zhCN })}
                             </p>
-                            {user.email && (
-                                <p className="text-xs text-muted-foreground mt-0.5 break-all">{user.email}</p>
-                            )}
+                            {user.email && <p className="text-xs text-muted-foreground mt-0.5 break-all">{user.email}</p>}
                         </div>
 
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-4 sm:mt-0">
-                            {/* Schedule Quota editor */}
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">课表额度</span>
-                                <Input
-                                    className="w-16 h-7 text-xs text-center"
-                                    value={scheduleQuota}
-                                    onChange={(e) => setScheduleQuota(e.target.value)}
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                />
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 text-xs"
-                                    onClick={handleScheduleQuotaUpdate}
-                                    disabled={isSchedulePending || scheduleQuota === String(user.schedule_quota)}
-                                >
-                                    {isSchedulePending ? <Loader2 className="w-3 h-3 animate-spin" /> : "保存"}
-                                </Button>
-                            </div>
-
-                            {/* Room Quota editor */}
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">Room 额度</span>
-                                <Input
-                                    className="w-16 h-7 text-xs text-center"
-                                    value={quota}
-                                    onChange={(e) => setQuota(e.target.value)}
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                />
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 text-xs"
-                                    onClick={handleQuotaUpdate}
-                                    disabled={isPending || quota === String(user.room_quota)}
-                                >
-                                    {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "保存"}
-                                </Button>
-                            </div>
-
+                            <QuotaEditor
+                                label="课表额度"
+                                value={scheduleQuota}
+                                setValue={setScheduleQuota}
+                                disabled={isSchedulePending || scheduleQuota === String(user.schedule_quota)}
+                                pending={isSchedulePending}
+                                onSave={handleScheduleQuotaUpdate}
+                            />
+                            <QuotaEditor
+                                label="Room 额度"
+                                value={quota}
+                                setValue={setQuota}
+                                disabled={isPending || quota === String(user.room_quota)}
+                                pending={isPending}
+                                onSave={handleQuotaUpdate}
+                            />
                             {!isSelf && (
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 text-xs"
-                                    onClick={handleRoleToggle}
-                                    disabled={isRolePending}
-                                >
+                                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleRoleToggle} disabled={isRolePending}>
                                     {isRolePending ? <Loader2 className="w-3 h-3 animate-spin" /> : user.role === "superadmin" ? "降为普通" : "升为管理"}
                                 </Button>
                             )}
@@ -203,5 +160,31 @@ function UserRow({ user, isSelf }: { user: AdminUser; isSelf: boolean }) {
                 </CardContent>
             </Card>
         </motion.div>
+    );
+}
+
+function QuotaEditor({
+    label,
+    value,
+    setValue,
+    disabled,
+    pending,
+    onSave,
+}: {
+    label: string;
+    value: string;
+    setValue: (value: string) => void;
+    disabled: boolean;
+    pending: boolean;
+    onSave: () => void;
+}) {
+    return (
+        <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">{label}</span>
+            <Input className="w-16 h-7 text-xs text-center" value={value} onChange={(e) => setValue(e.target.value)} type="number" min="0" max="100" />
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onSave} disabled={disabled}>
+                {pending ? <Loader2 className="w-3 h-3 animate-spin" /> : "保存"}
+            </Button>
+        </div>
     );
 }

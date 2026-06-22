@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getNextAvailableColor } from "@/lib/utils/colors";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { redirect } from "next/navigation";
 
 const createRoomSchema = z.object({
     name: z.string().min(1).max(100),

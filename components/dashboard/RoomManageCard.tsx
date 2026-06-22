@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
 import {
     ExternalLink,
     Users,
@@ -51,7 +50,6 @@ export function RoomManageCard({ room }: RoomManageCardProps) {
     const router = useRouter();
 
     const memberCount = room.room_members?.[0]?.count ?? 0;
-    const roomUrl = typeof window !== "undefined" ? `${window.location.origin}/room/${room.id}` : `/room/${room.id}`;
 
     function copyLink() {
         navigator.clipboard.writeText(`${window.location.origin}/room/${room.id}`);
@@ -95,7 +93,7 @@ export function RoomManageCard({ room }: RoomManageCardProps) {
                 return;
             }
 
-            toast.success("房间信息已更新");
+            toast.success("Room 信息已更新");
             setEditOpen(false);
             router.refresh();
         });
@@ -150,12 +148,7 @@ export function RoomManageCard({ room }: RoomManageCardProps) {
                         </Button>
                     </Link>
 
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5"
-                        onClick={copyLink}
-                    >
+                    <Button variant="outline" size="sm" className="gap-1.5" onClick={copyLink}>
                         {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                         复制链接
                     </Button>
@@ -173,21 +166,21 @@ export function RoomManageCard({ room }: RoomManageCardProps) {
                         <DialogTrigger asChild>
                             <Button variant="outline" size="sm" className="gap-1.5">
                                 <Pencil className="w-3.5 h-3.5" />
-                                修改房间名
+                                修改 Room
                             </Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
-                                <DialogTitle>编辑房间信息</DialogTitle>
+                                <DialogTitle>编辑 Room 信息</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-3 mt-2">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium">房间名</label>
+                                    <label className="text-sm font-medium">Room 名称</label>
                                     <Input
                                         value={roomName}
                                         maxLength={100}
                                         onChange={(e) => setRoomName(e.target.value)}
-                                        placeholder="输入新的房间名"
+                                        placeholder="输入新的 Room 名称"
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -199,11 +192,7 @@ export function RoomManageCard({ room }: RoomManageCardProps) {
                                         placeholder="可选描述"
                                     />
                                 </div>
-                                <Button
-                                    className="w-full"
-                                    onClick={handleSaveRoom}
-                                    disabled={isSaving || !roomName.trim()}
-                                >
+                                <Button className="w-full" onClick={handleSaveRoom} disabled={isSaving || !roomName.trim()}>
                                     {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "保存"}
                                 </Button>
                             </div>
@@ -214,9 +203,8 @@ export function RoomManageCard({ room }: RoomManageCardProps) {
                         open={inviteOpen}
                         onOpenChange={(open) => {
                             setInviteOpen(open);
-                            if (open) {
-                                handleSearch("");
-                            } else {
+                            if (open) handleSearch("");
+                            else {
                                 setSearchQuery("");
                                 setSearchResults([]);
                             }
@@ -234,7 +222,7 @@ export function RoomManageCard({ room }: RoomManageCardProps) {
                             </DialogHeader>
                             <div className="space-y-3 mt-2">
                                 <p className="text-xs text-muted-foreground">
-                                    超级管理员在这里添加成员时会直接分配进房间，无需对方同意。
+                                    超级管理员在这里添加成员时会直接分配进 Room，无需对方确认。
                                 </p>
                                 <div className="relative">
                                     <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
@@ -249,10 +237,7 @@ export function RoomManageCard({ room }: RoomManageCardProps) {
                                 {searchResults.length > 0 && (
                                     <div className="border border-border rounded-md divide-y divide-border max-h-60 overflow-y-auto">
                                         {searchResults.map((u) => (
-                                            <div
-                                                key={u.id}
-                                                className="flex items-center justify-between px-3 py-2.5"
-                                            >
+                                            <div key={u.id} className="flex items-center justify-between px-3 py-2.5">
                                                 <span className="text-sm">{u.display_name}</span>
                                                 <Button
                                                     size="sm"
@@ -275,13 +260,7 @@ export function RoomManageCard({ room }: RoomManageCardProps) {
                         </DialogContent>
                     </Dialog>
 
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5"
-                        onClick={togglePublic}
-                        disabled={isPublicToggling}
-                    >
+                    <Button variant="outline" size="sm" className="gap-1.5" onClick={togglePublic} disabled={isPublicToggling}>
                         {isPublicToggling ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         ) : room.is_public ? (

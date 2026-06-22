@@ -21,10 +21,9 @@ export default async function AdminUsersPage() {
         <PageWrapper className="max-w-4xl mx-auto space-y-6">
             <div>
                 <h1 className="text-2xl font-bold">用户管理</h1>
-                <p className="text-muted-foreground text-sm mt-1">管理所有用户账号和权限配额</p>
+                <p className="text-muted-foreground text-sm mt-1">管理所有用户账号、权限和配额</p>
             </div>
 
-            {/* Stats */}
             <div className="grid grid-cols-2 gap-4">
                 <Card>
                     <CardContent className="pt-5">

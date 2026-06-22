@@ -7,8 +7,16 @@ import { Lock, Globe, Users, Zap } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getDisplayMemberColor } from "@/lib/utils/colors";
+import type { BusyBlock, Course, Schedule } from "@/lib/types";
 
 interface RoomPageProps { params: Promise<{ roomId: string }>; }
+
+type ActiveSchedule = Pick<Schedule, "id" | "user_id" | "semester_tag" | "start_date" | "max_weeks">;
+type MemberRow = {
+    user_id: string;
+    color: string;
+    profile: { id: string; display_name: string | null } | { id: string; display_name: string | null }[] | null;
+};
 
 export default async function RoomPage({ params }: RoomPageProps) {
     const { roomId } = await params;
@@ -38,18 +46,68 @@ export default async function RoomPage({ params }: RoomPageProps) {
         );
     }
 
-    const { data: members } = await supabase.from("room_members").select("user_id, color, profile:profiles(id, display_name)").eq("room_id", roomId);
+    const { data: members } = await supabase
+        .from("room_members")
+        .select("user_id, color, profile:profiles(id, display_name)")
+        .eq("room_id", roomId);
+
+    const memberRows = (members ?? []) as MemberRow[];
+    const memberIds = memberRows.map((member) => member.user_id);
+
+    const [
+        { data: schedules },
+        { data: busyBlocks },
+    ] = memberIds.length > 0
+        ? await Promise.all([
+            supabase
+                .from("schedules")
+                .select("id, user_id, semester_tag, start_date, max_weeks")
+                .in("user_id", memberIds)
+                .eq("is_active", true)
+                .order("imported_at", { ascending: false }),
+            supabase
+                .from("busy_blocks")
+                .select("*")
+                .in("user_id", memberIds)
+                .order("starts_at", { ascending: true }),
+        ])
+        : [{ data: [] }, { data: [] }];
+
+    const scheduleRows = (schedules ?? []) as ActiveSchedule[];
+    const scheduleByUserId = new Map<string, ActiveSchedule>();
+    for (const schedule of scheduleRows) {
+        if (!scheduleByUserId.has(schedule.user_id)) scheduleByUserId.set(schedule.user_id, schedule);
+    }
+
+    const scheduleIds = Array.from(scheduleByUserId.values()).map((schedule) => schedule.id);
+    const { data: courses } = scheduleIds.length > 0
+        ? await supabase
+            .from("courses")
+            .select("*")
+            .in("schedule_id", scheduleIds)
+            .order("day_of_week", { ascending: true })
+            .order("start_time", { ascending: true })
+        : { data: [] };
+
+    const coursesByScheduleId = groupBy((courses ?? []) as Course[], (course) => course.schedule_id);
+    const busyBlocksByUserId = groupBy((busyBlocks ?? []) as BusyBlock[], (block) => block.user_id);
+
     const usedDisplayColors: string[] = [];
-    const memberData = await Promise.all((members ?? []).map(async (member) => {
+    const memberData = memberRows.map((member) => {
         const displayColor = getDisplayMemberColor(member.user_id, member.color, usedDisplayColors);
         usedDisplayColors.push(displayColor);
-        const { data: schedule } = await supabase.from("schedules").select("id, semester_tag, start_date, max_weeks").eq("user_id", member.user_id).eq("is_active", true).single();
-        const { data: busyBlocks } = await supabase.from("busy_blocks").select("*").eq("user_id", member.user_id).order("starts_at", { ascending: true });
+        const schedule = scheduleByUserId.get(member.user_id);
         if (!schedule) return null;
-        const { data: courses } = await supabase.from("courses").select("*").eq("schedule_id", schedule.id).eq("user_id", member.user_id);
         const profile = Array.isArray(member.profile) ? member.profile[0] : member.profile;
-        return { userId: member.user_id, displayName: (profile as { display_name: string | null } | null)?.display_name ?? "\u672a\u77e5\u7528\u6237", color: displayColor, schedule, courses: courses ?? [], busyBlocks: busyBlocks ?? [] };
-    }));
+        return {
+            userId: member.user_id,
+            displayName: profile?.display_name ?? "\u672a\u77e5\u7528\u6237",
+            color: displayColor,
+            schedule,
+            courses: coursesByScheduleId.get(schedule.id) ?? [],
+            busyBlocks: busyBlocksByUserId.get(member.user_id) ?? [],
+        };
+    });
 
     const validMemberData = memberData.filter(Boolean) as NonNullable<typeof memberData[0]>[];
     const years = validMemberData.flatMap((member) => {
@@ -80,4 +138,15 @@ export default async function RoomPage({ params }: RoomPageProps) {
             </main>
         </div>
     );
+}
+
+function groupBy<T>(items: T[], getKey: (item: T) => string): Map<string, T[]> {
+    const groups = new Map<string, T[]>();
+    for (const item of items) {
+        const key = getKey(item);
+        const group = groups.get(key);
+        if (group) group.push(item);
+        else groups.set(key, [item]);
+    }
+    return groups;
 }

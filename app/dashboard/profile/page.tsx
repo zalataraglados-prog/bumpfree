@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getCurrentUserProfile } from "@/lib/auth/current-user";
 import { ScheduleImportPanel } from "@/components/dashboard/ScheduleImportPanel";
 import { RescheduleNoticeImportPanel } from "@/components/dashboard/RescheduleNoticeImportPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,9 +16,7 @@ const DAY_NAMES = ["", "周一", "周二", "周三", "周四", "周五", "周六
 
 export default async function ProfilePage() {
     const supabase = await createClient();
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+    const { user, profile } = await getCurrentUserProfile();
     if (!user) redirect("/auth/login");
 
     const { data: schedules } = await supabase
@@ -25,12 +24,6 @@ export default async function ProfilePage() {
         .select("*, courses(*)")
         .eq("user_id", user.id)
         .order("imported_at", { ascending: false });
-
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("schedule_quota")
-        .eq("id", user.id)
-        .single();
 
     const hasSchedule = (schedules?.length ?? 0) > 0;
     const scheduleCount = schedules?.length ?? 0;
@@ -43,12 +36,12 @@ export default async function ProfilePage() {
                 <div>
                     <h1 className="text-2xl font-bold">我的课表</h1>
                     <p className="text-muted-foreground text-sm mt-1">
-                        通过文本导入课表数据，支持多课表存档管理
+                        通过文本或 HTML 导入课表数据，支持多课表存档管理
                     </p>
                 </div>
                 <div className="text-right">
                     <Badge variant={quotaReached ? "destructive" : "secondary"} className="text-xs">
-                        已存放: {scheduleCount} / {quota}
+                        已保存 {scheduleCount} / {quota}
                     </Badge>
                 </div>
             </div>
@@ -58,7 +51,7 @@ export default async function ProfilePage() {
                     <BookOpen className="w-5 h-5 flex-shrink-0 mt-0.5" />
                     <div>
                         <p className="font-semibold mb-1">课表额度已满</p>
-                        <p className="opacity-90">你的账号目前受限于最大 {quota} 份课表。若要导入新学期课表，请先删除下方的过期课表。</p>
+                        <p className="opacity-90">你的账号目前最多保存 {quota} 份课表。若要导入新学期课表，请先删除下方的过期课表。</p>
                     </div>
                 </div>
             ) : (
@@ -67,7 +60,6 @@ export default async function ProfilePage() {
 
             <RescheduleNoticeImportPanel />
 
-            {/* Schedule list */}
             {hasSchedule && (
                 <div className="space-y-4">
                     <h2 className="text-base font-semibold">已存课表</h2>
@@ -140,7 +132,7 @@ export default async function ProfilePage() {
                                                     {course.teacher && ` · ${course.teacher}`}
                                                 </p>
                                                 <p className="text-muted-foreground text-xs">
-                                                    第{course.start_week}-{course.end_week}周
+                                                    第 {course.start_week}-{course.end_week} 周
                                                     {course.room && ` · ${course.room}`}
                                                 </p>
                                             </div>
@@ -173,7 +165,7 @@ export default async function ProfilePage() {
                 <div className="text-center py-12 text-muted-foreground">
                     <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
                     <p>还没有导入任何课表</p>
-                    <p className="text-sm mt-1">从上方导入文本课表开始</p>
+                    <p className="text-sm mt-1">从上方导入文本或 HTML 课表开始</p>
                 </div>
             )}
         </div>

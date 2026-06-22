@@ -18,6 +18,7 @@ import {
     Search,
     Copy,
     Check,
+    Pencil,
 } from "lucide-react";
 import { searchUsers, inviteUserToRoom, updateRoom } from "@/lib/actions/rooms";
 import { toast } from "sonner";
@@ -38,11 +39,15 @@ interface RoomManageCardProps {
 export function RoomManageCard({ room }: RoomManageCardProps) {
     const [copied, setCopied] = useState(false);
     const [inviteOpen, setInviteOpen] = useState(false);
+    const [editOpen, setEditOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<{ id: string; display_name: string | null }[]>([]);
+    const [roomName, setRoomName] = useState(room.name);
+    const [roomDescription, setRoomDescription] = useState(room.description ?? "");
     const [isPending, startTransition] = useTransition();
     const [isPublicToggling, startPublicTransition] = useTransition();
     const [isSearching, startSearchTransition] = useTransition();
+    const [isSaving, startSaveTransition] = useTransition();
     const router = useRouter();
 
     const memberCount = room.room_members?.[0]?.count ?? 0;
@@ -69,11 +74,30 @@ export function RoomManageCard({ room }: RoomManageCardProps) {
             if (result.error) {
                 toast.error(result.error);
             } else {
-                toast.success(`已向 ${name} 发送邀请`);
+                toast.success(result.mode === "direct" ? `已将 ${name} 直接加入 Room` : `已向 ${name} 发送邀请`);
                 setInviteOpen(false);
                 setSearchQuery("");
                 setSearchResults([]);
+                router.refresh();
             }
+        });
+    }
+
+    function handleSaveRoom() {
+        startSaveTransition(async () => {
+            const result = await updateRoom(room.id, {
+                name: roomName,
+                description: roomDescription,
+            });
+
+            if (result.error) {
+                toast.error(result.error);
+                return;
+            }
+
+            toast.success("房间信息已更新");
+            setEditOpen(false);
+            router.refresh();
         });
     }
 
@@ -137,6 +161,56 @@ export function RoomManageCard({ room }: RoomManageCardProps) {
                     </Button>
 
                     <Dialog
+                        open={editOpen}
+                        onOpenChange={(open) => {
+                            setEditOpen(open);
+                            if (open) {
+                                setRoomName(room.name);
+                                setRoomDescription(room.description ?? "");
+                            }
+                        }}
+                    >
+                        <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="gap-1.5">
+                                <Pencil className="w-3.5 h-3.5" />
+                                修改房间名
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>编辑房间信息</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-3 mt-2">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">房间名</label>
+                                    <Input
+                                        value={roomName}
+                                        maxLength={100}
+                                        onChange={(e) => setRoomName(e.target.value)}
+                                        placeholder="输入新的房间名"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">描述</label>
+                                    <Input
+                                        value={roomDescription}
+                                        maxLength={500}
+                                        onChange={(e) => setRoomDescription(e.target.value)}
+                                        placeholder="可选描述"
+                                    />
+                                </div>
+                                <Button
+                                    className="w-full"
+                                    onClick={handleSaveRoom}
+                                    disabled={isSaving || !roomName.trim()}
+                                >
+                                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "保存"}
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Dialog
                         open={inviteOpen}
                         onOpenChange={(open) => {
                             setInviteOpen(open);
@@ -159,6 +233,9 @@ export function RoomManageCard({ room }: RoomManageCardProps) {
                                 <DialogTitle>邀请成员加入 {room.name}</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-3 mt-2">
+                                <p className="text-xs text-muted-foreground">
+                                    超级管理员在这里添加成员时会直接分配进房间，无需对方同意。
+                                </p>
                                 <div className="relative">
                                     <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
                                     <Input

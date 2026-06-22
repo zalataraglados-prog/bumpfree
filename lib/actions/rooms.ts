@@ -12,6 +12,13 @@ const createRoomSchema = z.object({
     expiresAt: z.string().optional(),
 });
 
+const updateRoomSchema = z.object({
+    name: z.string().trim().min(1).max(100).optional(),
+    description: z.string().trim().max(500).nullable().optional(),
+    expiresAt: z.string().nullable().optional(),
+    isPublic: z.boolean().optional(),
+});
+
 async function ensureCurrentUserProfile() {
     const supabase = await createClient();
     const {
@@ -103,14 +110,30 @@ export async function updateRoom(
     const { supabase, user } = await ensureCurrentUserProfile();
     if (!user) return { error: "请先登录" };
 
+    const parsed = updateRoomSchema.safeParse({
+        name: updates.name,
+        description: updates.description ?? null,
+        expiresAt: updates.expiresAt ?? null,
+        isPublic: updates.isPublic,
+    });
+
+    if (!parsed.success) return { error: "参数不合法" };
+
+    const payload: {
+        name?: string;
+        description?: string | null;
+        expires_at?: string | null;
+        is_public?: boolean;
+    } = {};
+
+    if (parsed.data.name !== undefined) payload.name = parsed.data.name;
+    if (parsed.data.description !== undefined) payload.description = parsed.data.description || null;
+    if (parsed.data.expiresAt !== undefined) payload.expires_at = parsed.data.expiresAt || null;
+    if (parsed.data.isPublic !== undefined) payload.is_public = parsed.data.isPublic;
+
     const { error } = await supabase
         .from("rooms")
-        .update({
-            name: updates.name,
-            description: updates.description,
-            expires_at: updates.expiresAt,
-            is_public: updates.isPublic,
-        })
+        .update(payload)
         .eq("id", roomId)
         .eq("admin_id", user.id);
 
@@ -175,20 +198,28 @@ export async function inviteUserToRoom(roomId: string, inviteeId: string) {
     const { supabase, user } = await ensureCurrentUserProfile();
     if (!user) return { error: "请先登录" };
 
-    const { data: room } = await supabase
-        .from("rooms")
-        .select("admin_id")
-        .eq("id", roomId)
-        .single();
+    const [{ data: room }, { data: profile }] = await Promise.all([
+        supabase
+            .from("rooms")
+            .select("admin_id")
+            .eq("id", roomId)
+            .single(),
+        supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", user.id)
+            .single(),
+    ]);
 
-    if (!room || room.admin_id !== user.id) return { error: "权限不足" };
+    const canManageRoom = room && (room.admin_id === user.id || profile?.role === "superadmin");
+    if (!canManageRoom) return { error: "权限不足" };
 
     const { data: existing } = await supabase
         .from("room_members")
         .select("user_id")
         .eq("room_id", roomId)
         .eq("user_id", inviteeId)
-        .single();
+        .maybeSingle();
 
     if (existing) return { error: "该用户已是 Room 成员" };
 
@@ -198,7 +229,37 @@ export async function inviteUserToRoom(roomId: string, inviteeId: string) {
         .eq("room_id", roomId)
         .eq("invitee_id", inviteeId)
         .eq("status", "pending")
-        .single();
+        .maybeSingle();
+
+    const assignDirectly = profile?.role === "superadmin";
+
+    if (assignDirectly) {
+        const { data: members } = await supabase
+            .from("room_members")
+            .select("color")
+            .eq("room_id", roomId);
+
+        const usedColors = (members ?? []).map((member) => member.color);
+        const { error: memberErr } = await supabase.from("room_members").insert({
+            room_id: roomId,
+            user_id: inviteeId,
+            color: getNextAvailableColor(usedColors),
+        });
+
+        if (memberErr) return { error: "自动分配成员失败" };
+
+        if (pendingInv) {
+            await supabase
+                .from("invitations")
+                .update({ status: "accepted" })
+                .eq("id", pendingInv.id);
+        }
+
+        revalidatePath(`/room/${roomId}`);
+        revalidatePath("/dashboard/rooms");
+        revalidatePath("/dashboard/invitations");
+        return { success: true, mode: "direct" as const };
+    }
 
     if (pendingInv) return { error: "已发送过邀请，等待对方回应" };
 
@@ -210,7 +271,8 @@ export async function inviteUserToRoom(roomId: string, inviteeId: string) {
     });
 
     if (error) return { error: "发送邀请失败" };
-    return { success: true };
+    revalidatePath("/dashboard/invitations");
+    return { success: true, mode: "invite" as const };
 }
 
 export async function getRoomMembers(roomId: string) {

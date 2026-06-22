@@ -16,6 +16,10 @@ const updateUserScheduleQuotaSchema = z.object({
     scheduleQuota: z.coerce.number().min(0).max(100),
 });
 
+const bulkCreateUsersSchema = z.object({
+    lines: z.string().min(1),
+});
+
 async function assertSuperAdmin() {
     const supabase = await createClient();
     const {
@@ -175,6 +179,120 @@ export async function toggleUserRole(userId: string, currentRole: string) {
     if (error) return { error: "更新失败" };
     revalidatePath("/admin/users");
     return { success: true };
+}
+
+function expandTemplate(value: string, index: number, isEmail: boolean) {
+    if (value.includes("{n}")) {
+        return value.replaceAll("{n}", String(index));
+    }
+
+    if (!isEmail) {
+        return `${value}${index}`;
+    }
+
+    const atIndex = value.lastIndexOf("@");
+    if (atIndex === -1) return `${value}${index}`;
+    return `${value.slice(0, atIndex)}${index}${value.slice(atIndex)}`;
+}
+
+export async function bulkCreateUsers(formData: FormData) {
+    const parsed = bulkCreateUsersSchema.safeParse({
+        lines: formData.get("lines"),
+    });
+
+    if (!parsed.success) return { error: "请至少填写一行账号信息" };
+
+    await assertSuperAdmin();
+    const adminClient = createAdminClient();
+    if (!adminClient) return { error: "缺少 Supabase 管理员配置，无法创建账号" };
+
+    const rawLines = parsed.data.lines
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+    const entries: Array<{ email: string; password: string; displayName: string }> = [];
+
+    for (const line of rawLines) {
+        const parts = line.split(",").map((part) => part.trim());
+        if (parts.length < 3 || parts.length > 4) {
+            return { error: `格式错误：${line}` };
+        }
+
+        const [emailTemplate, password, displayNameTemplate, quantityRaw] = parts;
+        const quantity = quantityRaw ? Number(quantityRaw) : 1;
+
+        if (!emailTemplate || !password || !displayNameTemplate) {
+            return { error: `格式错误：${line}` };
+        }
+        if (!Number.isInteger(quantity) || quantity < 1 || quantity > 200) {
+            return { error: `数量不合法：${line}` };
+        }
+        if (password.length < 6) {
+            return { error: `密码至少 6 位：${line}` };
+        }
+
+        if (quantity === 1) {
+            entries.push({
+                email: emailTemplate,
+                password,
+                displayName: displayNameTemplate,
+            });
+            continue;
+        }
+
+        for (let i = 1; i <= quantity; i += 1) {
+            entries.push({
+                email: expandTemplate(emailTemplate, i, true),
+                password,
+                displayName: expandTemplate(displayNameTemplate, i, false),
+            });
+        }
+    }
+
+    const created: string[] = [];
+    const failed: string[] = [];
+
+    for (const entry of entries) {
+        const { data, error } = await adminClient.auth.admin.createUser({
+            email: entry.email,
+            password: entry.password,
+            email_confirm: true,
+            user_metadata: {
+                display_name: entry.displayName,
+            },
+        });
+
+        if (error || !data.user) {
+            failed.push(`${entry.email}: ${error?.message || "创建失败"}`);
+            continue;
+        }
+
+        const profilePayload = {
+            id: data.user.id,
+            display_name: entry.displayName,
+        };
+
+        const { error: profileError } = await adminClient.from("profiles").upsert(profilePayload);
+        if (profileError) {
+            failed.push(`${entry.email}: ${profileError.message}`);
+            continue;
+        }
+
+        created.push(entry.email);
+    }
+
+    revalidatePath("/admin/users");
+
+    if (created.length === 0) {
+        return { error: failed[0] || "没有成功创建任何账号" };
+    }
+
+    return {
+        success: true,
+        createdCount: created.length,
+        failed,
+    };
 }
 
 export async function getGlobalStats() {

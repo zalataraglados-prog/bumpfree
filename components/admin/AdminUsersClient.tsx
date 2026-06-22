@@ -5,9 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { updateUserQuota, toggleUserRole, updateUserScheduleQuota } from "@/lib/actions/admin";
+import { Textarea } from "@/components/ui/textarea";
+import { updateUserQuota, toggleUserRole, updateUserScheduleQuota, bulkCreateUsers } from "@/lib/actions/admin";
 import { toast } from "sonner";
-import { Shield, User, Loader2 } from "lucide-react";
+import { Shield, User, Loader2, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import type { AdminUser } from "@/lib/types";
@@ -20,8 +21,52 @@ interface AdminUsersClientProps {
 }
 
 export function AdminUsersClient({ users, currentUserId }: AdminUsersClientProps) {
+    const [bulkText, setBulkText] = useState("");
+    const [isBulkPending, startBulkTransition] = useTransition();
+
+    function handleBulkCreate() {
+        const formData = new FormData();
+        formData.set("lines", bulkText);
+
+        startBulkTransition(async () => {
+            const result = await bulkCreateUsers(formData);
+            if (result.error) {
+                toast.error(result.error);
+                return;
+            }
+
+            toast.success(`已创建 ${result.createdCount} 个账号`);
+            const failedCount = result.failed?.length ?? 0;
+            if (failedCount > 0) {
+                toast.warning(`有 ${failedCount} 个账号创建失败，请检查格式或重复邮箱`);
+            }
+            setBulkText("");
+        });
+    }
+
     return (
         <div className="space-y-3">
+            <Card>
+                <CardContent className="pt-5 space-y-3">
+                    <div className="flex items-center gap-2">
+                        <UserPlus className="w-4 h-4 text-muted-foreground" />
+                        <h2 className="text-base font-semibold">新增账号</h2>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                        每行一个账号，格式：`邮箱,密码,昵称[,数量]`。数量默认 1。
+                        批量时可用 `{"{n}"}` 占位；如果不写，占位会自动追加到邮箱前缀和昵称末尾。
+                    </p>
+                    <Textarea
+                        value={bulkText}
+                        onChange={(e) => setBulkText(e.target.value)}
+                        placeholder={"student{n}@example.com,123456,学生{n},5\nsolo@example.com,123456,单人账号"}
+                        className="min-h-36"
+                    />
+                    <Button onClick={handleBulkCreate} disabled={isBulkPending || !bulkText.trim()}>
+                        {isBulkPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "批量创建"}
+                    </Button>
+                </CardContent>
+            </Card>
             <h2 className="text-base font-semibold">用户列表 ({users.length})</h2>
             {users.map((u) => (
                 <UserRow key={u.id} user={u} isSelf={u.id === currentUserId} />

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -9,22 +9,16 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { importTextSchedule } from "@/lib/actions/courses";
-import { getAiCleanupPrompt, getScheduleTemplate, parseTextSchedule, type ParsedTextSchedule, type TextScheduleImportMode } from "@/lib/utils/textSchedule";
+import { extractScheduleFileText } from "@/lib/actions/schedule-files";
+import type { ImportInterfaceConfig } from "@/lib/utils/importInterfaces";
+import { scheduleAdapterRegistry } from "@/lib/utils/scheduleAdapters/registry";
+import { getAiCleanupPrompt, getScheduleTemplate, type ParsedTextSchedule, type TextScheduleImportMode } from "@/lib/utils/textSchedule";
 import { Clipboard, FileText, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 const TEXT = {
     title: "\u5bfc\u5165\u8bfe\u8868",
-    description: "\u4f18\u5148\u4f7f\u7528\u53a6\u9a6c HTML \u4e13\u7528\u5165\u53e3\uff1b\u5176\u4ed6\u6587\u672c\u3001OCR \u6216\u624b\u673a\u590d\u5236\u5185\u5bb9\u7528\u901a\u7528\u6587\u672c\u5165\u53e3\u3002",
-    xmuTitle: "\u53a6\u9a6c HTML \u8bfe\u8868\u5bfc\u5165",
-    xmuDescription: "\u9002\u7528\u4e8e XMUM / \u53a6\u9a6c\u6559\u52a1\u7cfb\u7edf\u5bfc\u51fa\u6216\u590d\u5236\u7684\u5b8c\u6574 HTML \u8bfe\u8868\u9875\u3002",
-    xmuHint1: "\u5728\u6559\u52a1\u7cfb\u7edf\u6253\u5f00\u5468\u8bfe\u8868\u540e\uff0c\u4fdd\u5b58\u7f51\u9875\u4e3a .html/.htm\uff0c\u6216\u5168\u9009\u8bfe\u8868 HTML \u5185\u5bb9\u7c98\u8d34\u5230\u8fd9\u91cc\u3002",
-    xmuHint2: "\u7cfb\u7edf\u4f1a\u8bfb\u53d6 Time \u5217\u3001Monday-Sunday \u5217\u3001rowspan \u65f6\u957f\u3001Week 1-14\u3001\u6559\u5e08\u548c\u6559\u5ba4\uff1b\u82e5 HTML \u6ca1\u6709\u5b66\u671f\uff0c\u4f1a\u6309\u5f53\u524d\u6708\u4efd\u63a8\u65ad\uff0c\u4f60\u53ef\u4ee5\u5728\u9884\u89c8\u91cc\u624b\u5de5\u4fee\u6539\u3002",
-    xmuUpload: "\u62d6\u62fd\u6216\u4e0a\u4f20 HTML/TXT",
-    xmuText: "\u53a6\u9a6c HTML",
-    xmuPlaceholder: "\u4e0a\u4f20 .html/.htm\uff0c\u6216\u7c98\u8d34\u5305\u542b <table>...</table> \u7684\u53a6\u9a6c\u8bfe\u8868 HTML...",
-    generalTitle: "\u901a\u7528\u6587\u672c / AI \u5bfc\u5165",
-    generalDescription: "\u9002\u7528 BumpFree v1\u3001\u624b\u673a\u7c98\u8d34\u6587\u672c\u3001OCR\u3001Excel \u8f6c\u6587\u672c\u6216 AI \u6574\u7406\u540e\u7684\u8bfe\u8868\u3002",
+    description: "\u7531\u540e\u53f0\u63a5\u53e3\u7ba1\u7406\u63a7\u5236\u53ef\u7528\u5165\u53e3\uff1b\u901a\u7528\u683c\u5f0f\u548c\u5b66\u6821\u4e13\u7528\u683c\u5f0f\u53ef\u4ee5\u6309\u9700\u542f\u7528\u3002",
     copied: "\u5df2\u590d\u5236",
     copyFailed: "\u590d\u5236\u5931\u8d25",
     parseFailed: "\u89e3\u6790\u8bfe\u8868\u6587\u672c\u5931\u8d25",
@@ -35,11 +29,6 @@ const TEXT = {
     copyAiPrompt: "\u590d\u5236 AI \u6574\u7406\u63d0\u793a\u8bcd",
     templateLabel: "\u683c\u5f0f\u6a21\u677f",
     aiPromptLabel: "AI \u6574\u7406\u63d0\u793a\u8bcd",
-    hint1: "\u53ef\u4ee5\u76f4\u63a5\u7c98\u8d34 BumpFree Schedule Import v1 \u6587\u672c\uff0c\u4e5f\u53ef\u4ee5\u5148\u8ba9 AI \u628a\u5b66\u6821\u8bfe\u8868\u3001\u622a\u56fe OCR\u3001Excel \u5185\u5bb9\u6216\u804a\u5929\u8bb0\u5f55\u6574\u7406\u6210 v1 \u683c\u5f0f\u3002",
-    hint2: "\u89e3\u6790\u9884\u89c8\u786e\u8ba4\u524d\u4e0d\u4f1a\u4fdd\u5b58\u4efb\u4f55\u8bfe\u7a0b\u3002",
-    scheduleText: "\u8bfe\u8868\u6587\u672c",
-    uploadTxt: "\u4e0a\u4f20\u6587\u672c/HTML",
-    placeholder: "\u7c98\u8d34 BumpFree v1 \u6587\u672c\uff0c\u6216\u53d7\u652f\u6301\u7684\u677e\u6563\u8bfe\u8868\u6587\u672c...",
     parsePreview: "\u89e3\u6790\u9884\u89c8",
     dropReady: "\u62d6\u62fd\u6587\u4ef6\u5230\u8fd9\u91cc\uff0c\u6216\u70b9\u51fb\u53f3\u4e0a\u89d2\u4e0a\u4f20",
     editMeta: "\u624b\u5de5\u4fee\u6539\u5b66\u671f",
@@ -68,7 +57,7 @@ const TEXT = {
 
 const DAY_NAMES = ["", "\u5468\u4e00", "\u5468\u4e8c", "\u5468\u4e09", "\u5468\u56db", "\u5468\u4e94", "\u5468\u516d", "\u5468\u65e5"];
 
-export function ScheduleImportPanel() {
+export function ScheduleImportPanel({ interfaces }: { interfaces: ImportInterfaceConfig[] }) {
     return (
         <Card>
             <CardHeader>
@@ -79,16 +68,17 @@ export function ScheduleImportPanel() {
                 <CardDescription>{TEXT.description}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-                <TextScheduleImport variant="xmu-html" />
-                <div className="border-t border-border/60 pt-5">
-                    <TextScheduleImport variant="general" />
-                </div>
+                {interfaces.map((item, index) => (
+                    <div key={item.id} className={index === 0 ? "" : "border-t border-border/60 pt-5"}>
+                        <TextScheduleImport config={item} />
+                    </div>
+                ))}
             </CardContent>
         </Card>
     );
 }
 
-function TextScheduleImport({ variant }: { variant: "xmu-html" | "general" }) {
+function TextScheduleImport({ config }: { config: ImportInterfaceConfig }) {
     const [text, setText] = useState("");
     const [preview, setPreview] = useState<ParsedTextSchedule | null>(null);
     const [parseError, setParseError] = useState<string | null>(null);
@@ -110,7 +100,7 @@ function TextScheduleImport({ variant }: { variant: "xmu-html" | "general" }) {
 
     function handleParse() {
         try {
-            const parsed = parseTextSchedule(text);
+            const parsed = scheduleAdapterRegistry.parse(config.adapterKey, text);
             setPreview(parsed);
             setImportMode(parsed.importMode);
             setParseError(null);
@@ -122,9 +112,25 @@ function TextScheduleImport({ variant }: { variant: "xmu-html" | "general" }) {
 
     function handleFile(file: File | undefined) {
         if (!file) return;
+        if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+            const formData = new FormData();
+            formData.set("file", file);
+            void extractScheduleFileText(formData).then((result) => {
+                if (result.error) {
+                    toast.error(result.error);
+                    return;
+                }
+                applyText(result.text || "");
+                toast.success("PDF \u6587\u672c\u5df2\u62bd\u53d6");
+            });
+            return;
+        }
         const reader = new FileReader();
         reader.onload = () => {
             applyText(String(reader.result || ""));
+        };
+        reader.onerror = () => {
+            toast.error("文件读取失败");
         };
         reader.readAsText(file);
     }
@@ -144,24 +150,16 @@ function TextScheduleImport({ variant }: { variant: "xmu-html" | "general" }) {
         });
     }
 
-    const isXmuHtml = variant === "xmu-html";
-    const title = isXmuHtml ? TEXT.xmuTitle : TEXT.generalTitle;
-    const description = isXmuHtml ? TEXT.xmuDescription : TEXT.generalDescription;
-    const hints = isXmuHtml ? [TEXT.xmuHint1, TEXT.xmuHint2] : [TEXT.hint1, TEXT.hint2];
-    const uploadLabel = isXmuHtml ? TEXT.xmuUpload : TEXT.uploadTxt;
-    const inputLabel = isXmuHtml ? TEXT.xmuText : TEXT.scheduleText;
-    const placeholder = isXmuHtml ? TEXT.xmuPlaceholder : TEXT.placeholder;
-    const accept = isXmuHtml ? ".html,.htm,text/html" : ".txt,.html,.htm,text/plain,text/html";
-    const rows = isXmuHtml ? 7 : 10;
+    const rows = config.adapterKey === "generic-text" ? 10 : 7;
 
     return (
         <div className="space-y-4">
             <div>
-                <h3 className="text-sm font-semibold">{title}</h3>
-                <p className="text-xs text-muted-foreground mt-1">{description}</p>
+                <h3 className="text-sm font-semibold">{config.title}</h3>
+                <p className="text-xs text-muted-foreground mt-1">{config.description}</p>
             </div>
 
-            {!isXmuHtml && (
+            {config.features?.showTemplateTools && (
                 <div className="grid gap-2 sm:grid-cols-2">
                     <Button type="button" variant="outline" size="sm" onClick={() => copyText(getScheduleTemplate(), TEXT.templateLabel)}>
                         <FileText className="w-4 h-4 mr-2" />{TEXT.copyTemplate}
@@ -173,7 +171,7 @@ function TextScheduleImport({ variant }: { variant: "xmu-html" | "general" }) {
             )}
 
             <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
-                {hints.map((hint) => <p key={hint}>{hint}</p>)}
+                {config.hints.map((hint) => <p key={hint}>{hint}</p>)}
             </div>
 
             <div
@@ -186,26 +184,26 @@ function TextScheduleImport({ variant }: { variant: "xmu-html" | "general" }) {
                     event.preventDefault();
                     handleFile(event.dataTransfer.files?.[0]);
                 }}
-            >
+                >
                 <div className="flex items-center justify-between gap-2">
-                    <Label htmlFor={`schedule-text-${variant}`}>{inputLabel}</Label>
+                    <Label htmlFor={`schedule-text-${config.id}`}>{config.inputLabel}</Label>
                     <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer">
-                        <Upload className="w-3.5 h-3.5" />{uploadLabel}
+                        <Upload className="w-3.5 h-3.5" />{config.uploadLabel}
                         <input
                             type="file"
-                            accept={accept}
+                            accept={config.acceptedFileTypes}
                             className="hidden"
                             onChange={(e) => handleFile(e.target.files?.[0])}
                         />
                     </label>
                 </div>
                 <Textarea
-                    id={`schedule-text-${variant}`}
+                    id={`schedule-text-${config.id}`}
                     value={text}
                     onChange={(e) => {
                         applyText(e.target.value);
                     }}
-                    placeholder={placeholder}
+                    placeholder={config.placeholder}
                     rows={rows}
                     className="font-mono text-xs resize-y"
                 />
@@ -253,18 +251,18 @@ function TextScheduleImport({ variant }: { variant: "xmu-html" | "general" }) {
                     )}
                     <div className="grid gap-3 sm:grid-cols-3 rounded-md bg-muted/25 p-3">
                         <div className="space-y-1.5">
-                            <Label htmlFor={`semester-${variant}`} className="text-xs">{TEXT.semesterTag}</Label>
+                            <Label htmlFor={`semester-${config.id}`} className="text-xs">{TEXT.semesterTag}</Label>
                             <Input
-                                id={`semester-${variant}`}
+                                id={`semester-${config.id}`}
                                 value={preview.semesterTag}
                                 onChange={(event) => setPreview({ ...preview, semesterTag: event.target.value })}
                                 className="h-8 text-xs"
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label htmlFor={`start-date-${variant}`} className="text-xs">{TEXT.startDate}</Label>
+                            <Label htmlFor={`start-date-${config.id}`} className="text-xs">{TEXT.startDate}</Label>
                             <Input
-                                id={`start-date-${variant}`}
+                                id={`start-date-${config.id}`}
                                 type="date"
                                 value={preview.startDate}
                                 onChange={(event) => setPreview({ ...preview, startDate: event.target.value })}
@@ -272,9 +270,9 @@ function TextScheduleImport({ variant }: { variant: "xmu-html" | "general" }) {
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label htmlFor={`max-weeks-${variant}`} className="text-xs">{TEXT.maxWeeks}</Label>
+                            <Label htmlFor={`max-weeks-${config.id}`} className="text-xs">{TEXT.maxWeeks}</Label>
                             <Input
-                                id={`max-weeks-${variant}`}
+                                id={`max-weeks-${config.id}`}
                                 type="number"
                                 min={1}
                                 max={30}

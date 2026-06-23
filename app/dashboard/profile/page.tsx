@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUserProfile } from "@/lib/auth/current-user";
 import { ScheduleImportPanel } from "@/components/dashboard/ScheduleImportPanel";
 import { RescheduleNoticeImportPanel } from "@/components/dashboard/RescheduleNoticeImportPanel";
+import { getEnabledScheduleImportInterfaces } from "@/lib/actions/import-interfaces";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Calendar } from "lucide-react";
@@ -29,6 +30,7 @@ export default async function ProfilePage() {
     const scheduleCount = schedules?.length ?? 0;
     const quota = profile?.schedule_quota ?? 3;
     const quotaReached = scheduleCount >= quota;
+    const importInterfaces = await getEnabledScheduleImportInterfaces();
 
     return (
         <div className="max-w-3xl mx-auto space-y-6">
@@ -55,7 +57,7 @@ export default async function ProfilePage() {
                     </div>
                 </div>
             ) : (
-                <ScheduleImportPanel />
+                <ScheduleImportPanel interfaces={importInterfaces} />
             )}
 
             <RescheduleNoticeImportPanel />

@@ -27,6 +27,10 @@ export interface ParsedTextSchedule {
     warnings: string[];
 }
 
+export interface ParseTextScheduleOptions {
+    adapterKey?: string;
+}
+
 const DAY_MAP: Record<string, number> = {
     monday: 1,
     mon: 1,
@@ -62,11 +66,31 @@ const DAY_MAP: Record<string, number> = {
 
 const STRICT_HEADER = "BumpFree Schedule Import v1";
 
-export function parseTextSchedule(input: string): ParsedTextSchedule {
+export function parseTextSchedule(input: string, options: ParseTextScheduleOptions = {}): ParsedTextSchedule {
+    if (options.adapterKey && options.adapterKey !== "generic-text") {
+        throw new Error("学校专用导入接口请通过 scheduleAdapterRegistry 调用");
+    }
+    return parseGenericTextSchedule(input);
+}
+
+export function parseGenericTextSchedule(input: string): ParsedTextSchedule {
     const text = normalizeText(input);
     if (!text.trim()) throw new Error("\u8bf7\u5148\u7c98\u8d34\u8bfe\u8868\u6587\u672c");
     if (looksLikeHtmlSchedule(text)) return parseHtmlSchedule(text);
     return text.includes(STRICT_HEADER) ? parseStrictSchedule(text) : parseLooseSchedule(text);
+}
+
+export function parseXmuHtmlSchedule(input: string): ParsedTextSchedule {
+    const text = normalizeText(input);
+    if (!text.trim()) throw new Error("\u8bf7\u5148\u7c98\u8d34\u8bfe\u8868\u6587\u672c");
+    if (!looksLikeHtmlSchedule(text)) throw new Error("请上传或粘贴厦马 HTML 课表");
+    return parseHtmlSchedule(text);
+}
+
+export function parseSwpuPdfTextSchedule(input: string): ParsedTextSchedule {
+    const text = normalizeText(input);
+    if (!text.trim()) throw new Error("\u8bf7\u5148\u7c98\u8d34\u8bfe\u8868\u6587\u672c");
+    return parseSwpuScheduleText(text);
 }
 
 export function getScheduleTemplate(): string {
@@ -384,6 +408,107 @@ function parseHtmlCourseCell(html: string): { name: string; teacher: string; roo
         room: lines[3] || "",
         weeks,
     };
+}
+
+const SWPU_PERIOD_TIMES: Record<number, [string, string]> = {
+    1: ["08:00", "08:45"],
+    2: ["08:50", "09:35"],
+    3: ["09:50", "10:35"],
+    4: ["10:40", "11:25"],
+    5: ["11:30", "12:15"],
+    6: ["14:30", "15:15"],
+    7: ["15:20", "16:05"],
+    8: ["16:20", "17:05"],
+    9: ["17:10", "17:55"],
+    10: ["19:00", "19:45"],
+    11: ["19:50", "20:35"],
+    12: ["20:40", "21:25"],
+};
+
+function parseSwpuScheduleText(text: string): ParsedTextSchedule {
+    const compact = text
+        .replace(/--\s*\d+\s+of\s+\d+\s*--/gi, "")
+        .replace(/\s+/g, "");
+
+    const semesterTag = parseSwpuSemesterTag(text);
+    const startDate = inferSwpuSemesterStart(semesterTag);
+    const courses: TextScheduleCourse[] = [];
+    const seen = new Set<string>();
+    const entryPattern = /([A-Z0-9]{10})-([\s\S]*?)\[(\d{4})\]([0-9,\-周]+),星期([1-7]),第(\d{1,2})节-第(\d{1,2})节([\s\S]*?)(?=[A-Z0-9]{10}-|第\d{1,2}节-第\d{1,2}节|我的课程表|$)/g;
+
+    for (const match of compact.matchAll(entryPattern)) {
+        const code = match[1];
+        const name = cleanSwpuCourseName(match[2]);
+        const classCode = match[3];
+        const weeksText = match[4].replace(/周/g, "");
+        const dayOfWeek = Number(match[5]);
+        const startPeriod = Number(match[6]);
+        const endPeriod = Number(match[7]);
+        const room = cleanSwpuRoom(match[8]);
+        const start = SWPU_PERIOD_TIMES[startPeriod]?.[0];
+        const end = SWPU_PERIOD_TIMES[endPeriod]?.[1];
+        if (!name || !start || !end) continue;
+
+        for (const [startWeek, endWeek] of parseWeeks(weeksText)) {
+            const key = [code, name, classCode, dayOfWeek, start, end, startWeek, endWeek, room].join("|");
+            if (seen.has(key)) continue;
+            seen.add(key);
+            courses.push({
+                name: `${code} - ${name}`,
+                teacher: "",
+                room,
+                dayOfWeek,
+                startTime: start,
+                endTime: end,
+                startWeek,
+                endWeek,
+                note: `教学班 ${classCode}`,
+                color: colorForCourse(`${code} - ${name}`),
+            });
+        }
+    }
+
+    if (courses.length === 0) throw new Error("没有识别到西南石油大学 PDF 课表中的课程");
+    return {
+        format: "loose",
+        semesterTag,
+        startDate,
+        timezone: "Asia/Shanghai",
+        maxWeeks: Math.max(...courses.map((course) => course.endWeek)),
+        school: "西南石油大学",
+        importMode: "replace",
+        courses,
+        warnings: [
+            `已按西南石油大学节次时间表将第 1-12 节映射为具体时间；请在预览中核对 ${startDate} 是否为第 1 周周一。`,
+        ],
+    };
+}
+
+function parseSwpuSemesterTag(text: string): string {
+    const match = text.match(/(\d{4})-(\d{4})学年\s*(春季|秋季|夏季)?学期/);
+    if (!match) return inferDefaultSemesterTag();
+    return `${match[1]}-${match[2]} ${match[3] || ""}学期`.trim();
+}
+
+function inferSwpuSemesterStart(semesterTag: string): string {
+    const match = semesterTag.match(/(\d{4})-(\d{4})\s*(春季|秋季|夏季)?/);
+    if (!match) return inferFirstMondayFromSemester(semesterTag);
+    const year = match[3] === "春季" ? Number(match[2]) : Number(match[1]);
+    const seed = match[3] === "春季" ? new Date(year, 1, 20) : new Date(year, 8, 1);
+    while (seed.getDay() !== 1) seed.setDate(seed.getDate() + 1);
+    return `${seed.getFullYear()}-${String(seed.getMonth() + 1).padStart(2, "0")}-${String(seed.getDate()).padStart(2, "0")}`;
+}
+
+function cleanSwpuCourseName(value: string): string {
+    return value.replace(/[，,]+$/g, "").trim();
+}
+
+function cleanSwpuRoom(value: string): string {
+    return value
+        .replace(/[,，]+$/g, "")
+        .replace(/第\d{1,2}节.*$/g, "")
+        .replace(/我的课程表.*$/g, "")
+        .trim();
 }
 
 function cellText(html: string): string {

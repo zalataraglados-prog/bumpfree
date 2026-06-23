@@ -27,6 +27,7 @@ const TEXT = {
     importedSuffix: " \u6761\u8bfe\u7a0b",
     copyTemplate: "\u590d\u5236\u683c\u5f0f\u6a21\u677f",
     copyAiPrompt: "\u590d\u5236 AI \u6574\u7406\u63d0\u793a\u8bcd",
+    copyCustomPrompt: "\u590d\u5236\u8be5\u683c\u5f0f AI \u63d0\u793a\u8bcd",
     templateLabel: "\u683c\u5f0f\u6a21\u677f",
     aiPromptLabel: "AI \u6574\u7406\u63d0\u793a\u8bcd",
     parsePreview: "\u89e3\u6790\u9884\u89c8",
@@ -112,27 +113,16 @@ function TextScheduleImport({ config }: { config: ImportInterfaceConfig }) {
 
     function handleFile(file: File | undefined) {
         if (!file) return;
-        if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-            const formData = new FormData();
-            formData.set("file", file);
-            void extractScheduleFileText(formData).then((result) => {
-                if (result.error) {
-                    toast.error(result.error);
-                    return;
-                }
-                applyText(result.text || "");
-                toast.success("PDF \u6587\u672c\u5df2\u62bd\u53d6");
-            });
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = () => {
-            applyText(String(reader.result || ""));
-        };
-        reader.onerror = () => {
-            toast.error("文件读取失败");
-        };
-        reader.readAsText(file);
+        const formData = new FormData();
+        formData.set("file", file);
+        void extractScheduleFileText(formData).then((result) => {
+            if (result.error) {
+                toast.error(result.error);
+                return;
+            }
+            applyText(result.text || "");
+            toast.success("\u6587\u4ef6\u6587\u672c\u5df2\u62bd\u53d6");
+        });
     }
 
     function handleImport() {
@@ -168,6 +158,12 @@ function TextScheduleImport({ config }: { config: ImportInterfaceConfig }) {
                         <Clipboard className="w-4 h-4 mr-2" />{TEXT.copyAiPrompt}
                     </Button>
                 </div>
+            )}
+
+            {config.customMeta?.aiPrompt && (
+                <Button type="button" variant="outline" size="sm" onClick={() => copyText(config.customMeta?.aiPrompt || "", TEXT.aiPromptLabel)}>
+                    <Clipboard className="w-4 h-4 mr-2" />{TEXT.copyCustomPrompt}
+                </Button>
             )}
 
             <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">

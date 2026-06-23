@@ -6,6 +6,13 @@ export interface ScheduleAdapterFeatures {
     showTemplateTools?: boolean;
 }
 
+export interface CustomImportInterfaceMeta {
+    aiPrompt?: string;
+    semesterHint?: string;
+    manifestVersion?: number;
+    source?: string;
+}
+
 export interface ScheduleAdapterConfig {
     id: string;
     category: ImportInterfaceCategory;
@@ -21,6 +28,8 @@ export interface ScheduleAdapterConfig {
     sortOrder: number;
     schoolName?: string;
     features?: ScheduleAdapterFeatures;
+    isCustom?: boolean;
+    customMeta?: CustomImportInterfaceMeta;
 }
 
 export interface ScheduleAdapter {

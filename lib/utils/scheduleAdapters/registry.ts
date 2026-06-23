@@ -39,4 +39,4 @@ export function getDefaultImportInterfaceConfigs() {
     return scheduleAdapterRegistry.getAll().map((adapter) => adapter.config);
 }
 
-export type { ScheduleAdapter, ScheduleAdapterConfig, ScheduleAdapterFeatures, ImportInterfaceCategory } from "./types";
+export type { CustomImportInterfaceMeta, ScheduleAdapter, ScheduleAdapterConfig, ScheduleAdapterFeatures, ImportInterfaceCategory } from "./types";

@@ -9,11 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { importTextSchedule } from "@/lib/actions/courses";
+import { submitManualSchedule } from "@/lib/actions/manual-submissions";
 import { extractScheduleFileText } from "@/lib/actions/schedule-files";
 import type { ImportInterfaceConfig } from "@/lib/utils/importInterfaces";
 import { scheduleAdapterRegistry } from "@/lib/utils/scheduleAdapters/registry";
 import { getAiCleanupPrompt, getScheduleTemplate, type ParsedTextSchedule, type TextScheduleImportMode } from "@/lib/utils/textSchedule";
-import { Clipboard, FileText, Loader2, Upload } from "lucide-react";
+import { Clipboard, FileImage, FileText, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 const TEXT = {
@@ -54,6 +55,10 @@ const TEXT = {
     moreSuffix: " \u6761\u8bfe\u7a0b\u672a\u5c55\u793a",
     importing: "\u6b63\u5728\u5bfc\u5165...",
     confirmImport: "\u786e\u8ba4\u5bfc\u5165",
+    manualSubmitted: "已提交人工处理",
+    submitManual: "提交给管理员处理",
+    submitting: "正在提交...",
+    selectedFile: "已选择文件",
 };
 
 const DAY_NAMES = ["", "\u5468\u4e00", "\u5468\u4e8c", "\u5468\u4e09", "\u5468\u56db", "\u5468\u4e94", "\u5468\u516d", "\u5468\u65e5"];
@@ -71,11 +76,85 @@ export function ScheduleImportPanel({ interfaces }: { interfaces: ImportInterfac
             <CardContent className="space-y-5">
                 {interfaces.map((item, index) => (
                     <div key={item.id} className={index === 0 ? "" : "border-t border-border/60 pt-5"}>
-                        <TextScheduleImport config={item} />
+                        {item.features?.manualReview ? (
+                            <ManualReviewSubmission config={item} />
+                        ) : (
+                            <TextScheduleImport config={item} />
+                        )}
                     </div>
                 ))}
             </CardContent>
         </Card>
+    );
+}
+
+function ManualReviewSubmission({ config }: { config: ImportInterfaceConfig }) {
+    const [text, setText] = useState("");
+    const [file, setFile] = useState<File | null>(null);
+    const [isPending, startTransition] = useTransition();
+
+    function handleSubmit() {
+        if (!text.trim() && !file) return;
+        startTransition(async () => {
+            const formData = new FormData();
+            formData.set("text", text);
+            if (file) formData.set("file", file);
+            const result = await submitManualSchedule(formData);
+            if (result.error) {
+                toast.error(result.error);
+                return;
+            }
+            toast.success(TEXT.manualSubmitted);
+            setText("");
+            setFile(null);
+        });
+    }
+
+    return (
+        <div className="space-y-4">
+            <div>
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <FileImage className="w-4 h-4" />
+                    {config.title}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">{config.description}</p>
+            </div>
+
+            <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
+                {config.hints.map((hint) => <p key={hint}>{hint}</p>)}
+            </div>
+
+            <div className="space-y-2 rounded-md border border-dashed border-border/80 p-3 transition-colors hover:bg-muted/20">
+                <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor={`manual-text-${config.id}`}>{config.inputLabel}</Label>
+                    <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer">
+                        <Upload className="w-3.5 h-3.5" />{config.uploadLabel}
+                        <input
+                            type="file"
+                            accept={config.acceptedFileTypes}
+                            className="hidden"
+                            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                        />
+                    </label>
+                </div>
+                <Textarea
+                    id={`manual-text-${config.id}`}
+                    value={text}
+                    onChange={(event) => setText(event.target.value)}
+                    placeholder={config.placeholder}
+                    rows={5}
+                    className="text-sm resize-y"
+                />
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs text-muted-foreground">
+                        {file ? `${TEXT.selectedFile}：${file.name}` : "支持上传图片或文本文件，最多 2MB。"}
+                    </p>
+                    <Button type="button" onClick={handleSubmit} disabled={isPending || (!text.trim() && !file)}>
+                        {isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{TEXT.submitting}</> : TEXT.submitManual}
+                    </Button>
+                </div>
+            </div>
+        </div>
     );
 }
 

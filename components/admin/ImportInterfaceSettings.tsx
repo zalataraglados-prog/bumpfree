@@ -8,6 +8,7 @@ import {
     updateImportInterface,
     uploadCustomImportInterface,
 } from "@/lib/actions/import-interfaces";
+import { updateManualScheduleSubmission, type ManualScheduleSubmission } from "@/lib/actions/manual-submissions";
 import type { ImportInterfaceConfig } from "@/lib/utils/importInterfaces";
 import { CUSTOM_IMPORT_INTERFACE_PROMPT } from "@/lib/utils/customImportInterfacePrompt";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,9 +17,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Clipboard, FileCog, PlugZap, RotateCcw, School, Trash2, Upload } from "lucide-react";
+import { Clipboard, FileCog, Inbox, PlugZap, RotateCcw, School, Trash2, Upload } from "lucide-react";
 
-export function ImportInterfaceSettings({ interfaces }: { interfaces: ImportInterfaceConfig[] }) {
+const STATUS_LABEL: Record<ManualScheduleSubmission["status"], string> = {
+    pending: "待处理",
+    processing: "处理中",
+    done: "已完成",
+    rejected: "已驳回",
+};
+
+export function ImportInterfaceSettings({
+    interfaces,
+    manualSubmissions,
+}: {
+    interfaces: ImportInterfaceConfig[];
+    manualSubmissions: ManualScheduleSubmission[];
+}) {
     const [isPending, startTransition] = useTransition();
     const general = interfaces.filter((item) => item.category === "general");
     const schools = interfaces.filter((item) => item.category === "school");
@@ -51,7 +65,7 @@ export function ImportInterfaceSettings({ interfaces }: { interfaces: ImportInte
                 <div>
                     <h2 className="text-lg font-semibold">课表导入接口</h2>
                     <p className="text-sm text-muted-foreground">
-                        后台统一控制用户侧可见的导入入口；学校格式可以通过 JSON 清单像安装 MOD 一样追加。
+                        后台统一控制用户侧可见的导入入口；通用、人工处理和学校专用入口都可以单独开关。
                     </p>
                 </div>
                 <Button type="button" variant="outline" size="sm" onClick={handleReset} disabled={isPending}>
@@ -59,6 +73,8 @@ export function ImportInterfaceSettings({ interfaces }: { interfaces: ImportInte
                     重置默认
                 </Button>
             </div>
+
+            <ManualSubmissionQueue items={manualSubmissions} isPending={isPending} />
 
             <Card>
                 <CardHeader>
@@ -103,7 +119,7 @@ export function ImportInterfaceSettings({ interfaces }: { interfaces: ImportInte
             <div className="grid gap-4 lg:grid-cols-2">
                 <InterfaceColumn
                     title="常规接口管理"
-                    description="面向所有学校的通用文本、AI 整理和标准格式导入。"
+                    description="面向所有学校的通用文本、AI 整理和人工处理入口。"
                     icon={PlugZap}
                     items={general}
                     isPending={isPending}
@@ -127,6 +143,100 @@ export function ImportInterfaceSettings({ interfaces }: { interfaces: ImportInte
                 />
             </div>
         </div>
+    );
+}
+
+function ManualSubmissionQueue({ items, isPending }: { items: ManualScheduleSubmission[]; isPending: boolean }) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                    <Inbox className="w-4 h-4" />
+                    人工处理待办
+                </CardTitle>
+                <CardDescription>用户通过“人工处理”入口提交的文本或图片会出现在这里。</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                {items.length === 0 && (
+                    <p className="text-sm text-muted-foreground">暂无待处理提交。</p>
+                )}
+                {items.map((item) => (
+                    <form
+                        key={item.id}
+                        action={async (formData) => {
+                            const result = await updateManualScheduleSubmission(formData);
+                            if (result.error) {
+                                toast.error(result.error);
+                                return;
+                            }
+                            toast.success("处理状态已更新");
+                        }}
+                        className="rounded-md border border-border/70 p-3 space-y-3"
+                    >
+                        <input type="hidden" name="id" value={item.id} />
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <p className="font-medium text-sm">{item.profile?.display_name || item.user_id}</p>
+                                    <Badge variant={item.status === "pending" ? "default" : "secondary"}>{STATUS_LABEL[item.status]}</Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {new Date(item.created_at).toLocaleString("zh-CN")}
+                                </p>
+                            </div>
+                            {item.file_name && <Badge variant="outline">{item.file_name}</Badge>}
+                        </div>
+
+                        {item.text_content && (
+                            <pre className="max-h-40 overflow-auto rounded-md bg-muted/40 p-3 text-xs whitespace-pre-wrap">{item.text_content}</pre>
+                        )}
+
+                        {item.file_data && item.file_type?.startsWith("image/") && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                                src={`data:${item.file_type};base64,${item.file_data}`}
+                                alt={item.file_name || "课表图片"}
+                                className="max-h-80 rounded-md border border-border/70 object-contain"
+                            />
+                        )}
+
+                        {item.file_data && (
+                            <a
+                                href={`data:${item.file_type || "application/octet-stream"};base64,${item.file_data}`}
+                                download={item.file_name || "schedule-submission"}
+                                className="text-sm text-primary underline-offset-4 hover:underline"
+                            >
+                                下载附件
+                            </a>
+                        )}
+
+                        <div className="grid gap-2 sm:grid-cols-[9rem_1fr_auto] sm:items-end">
+                            <div className="space-y-1.5">
+                                <Label htmlFor={`${item.id}-status`} className="text-xs">状态</Label>
+                                <select
+                                    id={`${item.id}-status`}
+                                    name="status"
+                                    defaultValue={item.status}
+                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                >
+                                    <option value="pending">待处理</option>
+                                    <option value="processing">处理中</option>
+                                    <option value="done">已完成</option>
+                                    <option value="rejected">已驳回</option>
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor={`${item.id}-note`} className="text-xs">管理员备注</Label>
+                                <Input id={`${item.id}-note`} name="adminNote" defaultValue={item.admin_note || ""} className="h-9 text-sm" />
+                            </div>
+                            <Button type="submit" size="sm" variant="outline" disabled={isPending}>
+                                保存
+                            </Button>
+                        </div>
+                    </form>
+                ))}
+            </CardContent>
+        </Card>
     );
 }
 

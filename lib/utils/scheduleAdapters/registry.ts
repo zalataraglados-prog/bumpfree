@@ -1,5 +1,6 @@
 import type { ParsedTextSchedule } from "@/lib/utils/textSchedule";
 import { genericTextAdapter } from "./generic";
+import { manualReviewAdapter } from "./manualReview";
 import { swpuPdfAdapter } from "./swpuPdf";
 import type { ScheduleAdapter } from "./types";
 import { xmuHtmlAdapter } from "./xmuHtml";
@@ -32,6 +33,7 @@ class ScheduleAdapterRegistry {
 export const scheduleAdapterRegistry = new ScheduleAdapterRegistry();
 
 scheduleAdapterRegistry.register(genericTextAdapter);
+scheduleAdapterRegistry.register(manualReviewAdapter);
 scheduleAdapterRegistry.register(xmuHtmlAdapter);
 scheduleAdapterRegistry.register(swpuPdfAdapter);
 

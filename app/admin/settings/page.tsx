@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Shield } from "lucide-react";
 import { ImportInterfaceSettings } from "@/components/admin/ImportInterfaceSettings";
 import { getAllImportInterfaces } from "@/lib/actions/import-interfaces";
+import { getManualScheduleSubmissions } from "@/lib/actions/manual-submissions";
 
 export default async function AdminSettingsPage() {
     const supabase = await createClient();
@@ -21,13 +22,16 @@ export default async function AdminSettingsPage() {
 
     if (profile?.role !== "superadmin") redirect("/dashboard");
 
-    const importInterfaces = await getAllImportInterfaces();
+    const [importInterfaces, manualSubmissions] = await Promise.all([
+        getAllImportInterfaces(),
+        getManualScheduleSubmissions(),
+    ]);
 
     return (
         <div className="max-w-6xl mx-auto space-y-6">
             <div>
                 <h1 className="text-2xl font-bold">全站配置</h1>
-                <p className="text-muted-foreground text-sm mt-1">网站参数、系统信息和课表导入接口开关</p>
+                <p className="text-muted-foreground text-sm mt-1">网站参数、系统信息、课表导入接口开关和人工处理队列</p>
             </div>
 
             <Card>
@@ -44,7 +48,7 @@ export default async function AdminSettingsPage() {
                 </CardContent>
             </Card>
 
-            <ImportInterfaceSettings interfaces={importInterfaces} />
+            <ImportInterfaceSettings interfaces={importInterfaces} manualSubmissions={manualSubmissions} />
         </div>
     );
 }

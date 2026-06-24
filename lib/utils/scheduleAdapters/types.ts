@@ -4,6 +4,7 @@ export type ImportInterfaceCategory = "general" | "school";
 
 export interface ScheduleAdapterFeatures {
     showTemplateTools?: boolean;
+    manualReview?: boolean;
 }
 
 export interface CustomImportInterfaceMeta {
